@@ -49,7 +49,7 @@ class Game {
 
     const sfxExt = SFX.supportsAudioType('mp3') ? 'mp3' : 'ogg';
     const game = this;
-    this.anims = ['ascend-stairs', 'gather-objects', 'look-around', 'push-button'];
+    this.anims = []; // ['ascend-stairs', 'gather-objects', 'look-around', 'push-button'];
     this.tweens = [];
 
     this.assetsPath = '../assets/';
@@ -61,7 +61,8 @@ class Game {
         `${this.assetsPath}sfx/button.${sfxExt}`,
         `${this.assetsPath}sfx/door.${sfxExt}`,
         `${this.assetsPath}sfx/fan.${sfxExt}`,
-        `${this.assetsPath}fbx/environment.fbx`,
+        `${this.assetsPath}fbx/environment4.fbx`,
+        `${this.assetsPath}fbx/proxy.fbx`,
         `${this.assetsPath}fbx/girl-walk.fbx`,
         `${this.assetsPath}fbx/usb.fbx`,
       ],
@@ -206,26 +207,26 @@ class Game {
 
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
 
-    const col = 0x605050;
+    const col = 0xbaecfd;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(col);
     this.scene.fog = new THREE.Fog(col, 500, 1500);
 
-    let light = new THREE.HemisphereLight(0xffffff, 0x444444);
+    let light = new THREE.HemisphereLight(0xffffff);
     light.position.set(0, 200, 0);
     this.scene.add(light);
 
-    light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(0, 200, 100);
-    light.castShadow = true;
-    light.shadow.mapSize.width = 2048;
-    light.shadow.mapSize.height = 2048;
-    light.shadow.camera.top = 3000;
-    light.shadow.camera.bottom = -3000;
-    light.shadow.camera.left = -3000;
-    light.shadow.camera.right = 3000;
-    light.shadow.camera.far = 3000;
-    this.scene.add(light);
+    // light = new THREE.DirectionalLight(0xffffff);
+    // light.position.set(0, 200, 100);
+    // light.castShadow = true;
+    // light.shadow.mapSize.width = 2048;
+    // light.shadow.mapSize.height = 2048;
+    // light.shadow.camera.top = 3000;
+    // light.shadow.camera.bottom = -3000;
+    // light.shadow.camera.left = -3000;
+    // light.shadow.camera.right = 3000;
+    // light.shadow.camera.far = 3000;
+    //this.scene.add(light);
 
     // ground
     const mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2000, 2000), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
@@ -278,7 +279,7 @@ class Game {
 
       game.joystick = new JoyStick({
         onMove: game.playerControl,
-        game,
+        game
       });
 
       game.createCameras();
@@ -307,71 +308,89 @@ class Game {
   loadUSB(loader) {
     const game = this;
 
-    loader.load(`${this.assetsPath}fbx/usb.fbx`, (object) => {
-      game.scene.add(object);
+    //loader.load(`${this.assetsPath}fbx/usb.fbx`, (object) => {
+      // game.scene.add(object);
 
-      const scale = 0.2;
-      object.scale.set(scale, scale, scale);
-      object.name = 'usb';
-      object.position.set(-416, 0.8, -472);
-      object.castShadow = true;
+      // const scale = 0.2;
+      // object.scale.set(scale, scale, scale);
+      // object.name = 'usb';
+      // object.position.set(-416, 0.8, -472);
+      // object.castShadow = true;
 
-      game.collect.push(object);
+      // game.collect.push(object);
 
-      object.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
+      // object.traverse((child) => {
+      //   if (child.isMesh) {
+      //     child.castShadow = true;
+      //     child.receiveShadow = true;
+      //   }
+      // });
 
-      game.loadNextAnim(loader);
-    }, null, this.onError);
+      //game.loadNextAnim(loader);
+   // }, null, this.onError);
+
+    game.loadNextAnim(loader);
+
   }
 
   loadEnvironment(loader) {
     const game = this;
 
-    loader.load(`${this.assetsPath}fbx/environment.fbx`, (object) => {
+    // // Env proxy
+    // loader.load(`${this.assetsPath}fbx/proxy.fbx`, (object) => {
+    //   game.environmentProxy = object;
+    // });
+
+    // Visible env
+    loader.load(`${this.assetsPath}fbx/environment4.fbx`, (object) => {
       game.scene.add(object);
-      game.doors = [];
-      game.fans = [];
+      //game.doors = [];
+      //game.fans = [];
 
       object.receiveShadow = true;
       object.scale.set(0.8, 0.8, 0.8);
       object.name = 'Environment';
-      let door = { trigger: null, proxy: [], doors: [] };
-
       object.traverse((child) => {
         if (child.isMesh) {
-          if (child.name.includes('main')) {
             child.castShadow = true;
             child.receiveShadow = true;
-          } else if (child.name.includes('mentproxy')) {
-            child.material.visible = false;
-            game.environmentProxy = child;
-          } else if (child.name.includes('door-proxy')) {
-            child.material.visible = false;
-            door.proxy.push(child);
-            checkDoor();
- 					} else if (child.name.includes('door')) {
-            door.doors.push(child);
-            checkDoor();
-          } else if (child.name.includes('fan')) {
-            game.fans.push(child);
-          }
-        } else if (child.name.includes('Door-null')) {
-          door.trigger = child;
-          checkDoor();
-        }
-
-        function checkDoor() {
-          if (door.trigger !== null && door.proxy.length == 2 && door.doors.length == 2) {
-            game.doors.push({ ...door });
-            door = { trigger: null, proxy: [], doors: [] };
-          }
         }
       });
+      // mock the proxy with the original environment
+      game.environmentProxy = object;
+     // let door = { trigger: null, proxy: [], doors: [] };
+
+
+      // object.traverse((child) => {
+      //   if (child.isMesh) {
+      //     if (child.name.includes('main')) {
+      //       child.castShadow = true;
+      //       child.receiveShadow = true;
+      //     } else if (child.name.includes('mentproxy')) {
+      //       child.material.visible = false;
+      //       game.environmentProxy = child;
+      //     } else if (child.name.includes('door-proxy')) {
+      //       child.material.visible = false;
+      //       door.proxy.push(child);
+      //       checkDoor();
+ 			// 		} else if (child.name.includes('door')) {
+      //       door.doors.push(child);
+      //       checkDoor();
+      //     } else if (child.name.includes('fan')) {
+      //       game.fans.push(child);
+      //     }
+      //   } else if (child.name.includes('Door-null')) {
+      //     door.trigger = child;
+      //     checkDoor();
+      //   }
+
+      //   function checkDoor() {
+      //     if (door.trigger !== null && door.proxy.length == 2 && door.doors.length == 2) {
+      //       game.doors.push({ ...door });
+      //       door = { trigger: null, proxy: [], doors: [] };
+      //     }
+      //   }
+      // });
 
       game.loadUSB(loader);
     }, null, this.onError);
@@ -442,14 +461,14 @@ class Game {
   loadNextAnim(loader) {
     const anim = this.anims.pop();
     const game = this;
-    loader.load(`${this.assetsPath}fbx/${anim}.fbx`, (object) => {
-      game.player[anim] = object.animations[0];
-      if (anim == 'push-button') {
-        game.player[anim].loop = false;
-      }
-      if (game.anims.length > 0) {
-        game.loadNextAnim(loader);
-      } else {
+    // loader.load(`${this.assetsPath}fbx/${anim}.fbx`, (object) => {
+    //   game.player[anim] = object.animations[0];
+    //   if (anim == 'push-button') {
+    //     game.player[anim].loop = false;
+    //   }
+    //   if (game.anims.length > 0) {
+    //     game.loadNextAnim(loader);
+    //   } else {
         delete game.anims;
         game.action = 'idle';
         game.initPlayerPosition();
@@ -459,8 +478,8 @@ class Game {
         overlay.addEventListener('animationend', (evt) => {
           evt.target.style.display = 'none';
         }, false);
-      }
-    }, null, this.onError);
+    //   }
+    // }, null, this.onError);
   }
 
   initPlayerPosition() {
@@ -1032,6 +1051,8 @@ class SFX {
   }
 }
 
+
+
 class JoyStick {
   constructor(options) {
     const circle = document.createElement('div');
@@ -1046,15 +1067,23 @@ class JoyStick {
     this.onMove = options.onMove;
     this.game = options.game;
     this.origin = { left: this.domElement.offsetLeft, top: this.domElement.offsetTop };
+    const joystick = this;
 
     if (this.domElement != undefined) {
-      const joystick = this;
       if ('ontouchstart' in window) {
         this.domElement.addEventListener('touchstart', (evt) => { joystick.tap(evt); });
       } else {
         this.domElement.addEventListener('mousedown', (evt) => { joystick.tap(evt); });
       }
     }
+
+    // keyboard support
+    if ('onkeypress' in window) {
+      document.addEventListener('keydown', function(e) {
+        joystick.moveByKeyboard(e); // TODO: refactor
+      });
+    }
+
   }
 
   getMousePosition(evt) {
@@ -1062,7 +1091,7 @@ class JoyStick {
     const clientY = evt.targetTouches ? evt.targetTouches[0].pageY : evt.clientY;
     return { x: clientX, y: clientY };
   }
-d
+
   tap(evt) {
     evt = evt || window.event;
     // get the mouse cursor position at startup:
@@ -1074,6 +1103,18 @@ d
     } else {
       document.onmousemove = function (evt) { joystick.move(evt); };
       document.onmouseup = function (evt) { joystick.up(evt); };
+    }
+  }
+
+  moveByKeyboard(e) {
+    e = e || window.event;
+    if (this.onMove != undefined) {
+      var forward = 0,
+        turn = 0;
+      if(e.code === 'ArrowUp') {
+        forward = 0.5;
+      }
+      this.onMove.call(this.game, forward, turn);
     }
   }
 
