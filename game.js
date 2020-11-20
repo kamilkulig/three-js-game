@@ -212,21 +212,21 @@ class Game {
     this.scene.background = new THREE.Color(col);
     this.scene.fog = new THREE.Fog(col, 500, 1500);
 
-    let light = new THREE.HemisphereLight(0xffffff);
+    let light = new THREE.HemisphereLight(0xffffff, 0.5);
     light.position.set(0, 200, 0);
     this.scene.add(light);
 
-    // light = new THREE.DirectionalLight(0xffffff);
-    // light.position.set(0, 200, 100);
-    // light.castShadow = true;
-    // light.shadow.mapSize.width = 2048;
-    // light.shadow.mapSize.height = 2048;
-    // light.shadow.camera.top = 3000;
-    // light.shadow.camera.bottom = -3000;
-    // light.shadow.camera.left = -3000;
-    // light.shadow.camera.right = 3000;
-    // light.shadow.camera.far = 3000;
-    //this.scene.add(light);
+    light = new THREE.DirectionalLight(0xffd633, 0.5);
+    light.position.set(0, 2000, 1000);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
+    light.shadow.camera.top = 3000;
+    light.shadow.camera.bottom = -3000;
+    light.shadow.camera.left = -3000;
+    light.shadow.camera.right = 3000;
+    light.shadow.camera.far = 3000;
+    this.scene.add(light);
 
     // ground
     const mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2000, 2000), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
@@ -348,7 +348,7 @@ class Game {
       //game.fans = [];
 
       object.receiveShadow = true;
-      object.scale.set(0.8, 0.8, 0.8);
+      //object.scale.set(0.8, 0.8, 0.8);
       object.name = 'Environment';
       object.traverse((child) => {
         if (child.isMesh) {
@@ -357,7 +357,7 @@ class Game {
         }
       });
       // mock the proxy with the original environment
-      game.environmentProxy = object;
+      game.environmentProxy = object.children[1]; // TODO: remove camera from mesh
      // let door = { trigger: null, proxy: [], doors: [] };
 
 
@@ -1054,6 +1054,7 @@ class SFX {
 
 
 class JoyStick {
+
   constructor(options) {
     const circle = document.createElement('div');
     circle.style.cssText = 'position:absolute; bottom:35px; width:80px; height:80px; background:rgba(126, 126, 126, 0.5); border:#fff solid medium; border-radius:50%; left:50%; transform:translateX(-50%);';
@@ -1067,6 +1068,9 @@ class JoyStick {
     this.onMove = options.onMove;
     this.game = options.game;
     this.origin = { left: this.domElement.offsetLeft, top: this.domElement.offsetTop };
+    this.forward = 0;
+    this.turn = 0;
+    
     const joystick = this;
 
     if (this.domElement != undefined) {
@@ -1078,9 +1082,27 @@ class JoyStick {
     }
 
     // keyboard support
-    if ('onkeypress' in window) {
+    if ('onkeydown' in window) {
       document.addEventListener('keydown', function(e) {
-        joystick.moveByKeyboard(e); // TODO: refactor
+        switch (e.code) {
+          case 'ArrowUp': joystick.forward = 0.5; break;
+          case 'ArrowDown': joystick.forward = -0.5; break;
+          case 'ArrowLeft': joystick.turn = -0.5; break;
+          case 'ArrowRight': joystick.turn = 0.5; break;
+        }
+        joystick.moveByKeyboard(); // TODO: refactor
+      });
+    }
+
+    if ('onkeyup' in window) {
+      document.addEventListener('keyup', function(e) {
+        switch (e.code) {
+          case 'ArrowUp': joystick.forward = 0; break;
+          case 'ArrowDown': joystick.forward = 0; break;
+          case 'ArrowLeft': joystick.turn = 0; break;
+          case 'ArrowRight': joystick.turn = 0; break;
+        }
+        joystick.moveByKeyboard(); // TODO: refactor
       });
     }
 
@@ -1106,15 +1128,9 @@ class JoyStick {
     }
   }
 
-  moveByKeyboard(e) {
-    e = e || window.event;
+  moveByKeyboard() {
     if (this.onMove != undefined) {
-      var forward = 0,
-        turn = 0;
-      if(e.code === 'ArrowUp') {
-        forward = 0.5;
-      }
-      this.onMove.call(this.game, forward, turn);
+      this.onMove.call(this.game, this.forward, this.turn);
     }
   }
 
