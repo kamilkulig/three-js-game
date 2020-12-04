@@ -155,14 +155,14 @@ class Game {
             rightProxy.position = right.position.clone();
           }));
           break;
-        case 'collect':
-          this.activeCamera = this.player.cameras.collect;
-          this.collect[this.onAction.index].visible = false;
-          if (this.collected == undefined) this.collected = [];
-          this.collected.push(this.onAction.index);
-          document.getElementById('briefcase').children[0].children[0].children[this.onAction.index].children[0].src = this.onAction.src;
+        // case 'collect':
+        //   this.activeCamera = this.player.cameras.collect;
+        //   this.collect[this.onAction.index].visible = false;
+        //   if (this.collected == undefined) this.collected = [];
+        //   this.collected.push(this.onAction.index);
+        //   document.getElementById('briefcase').children[0].children[0].children[this.onAction.index].children[0].src = this.onAction.src;
 
-          break;
+        //   break;
       }
     }
   }
@@ -256,14 +256,15 @@ class Game {
         }
       });
       object.castShadow = true;
+      object.rotationY = 0;
 
       game.player.mixer = object.mixer;
       game.player.root = object.mixer.getRoot();
 
       object.name = 'Character';
-      const scale = 0.007;
+      const scale = 0.01;
       object.scale.set(scale, scale, scale);
-      object.position.set(-416, 0.8, -472);
+      object.position.set(0, 0, 0);
       object.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -273,6 +274,7 @@ class Game {
 
       game.scene.add(object);
       game.player.object = object;
+      game.player.bullets = [];
       game.player.walk = object.animations[0];
       game.player.idle = object.animations[2];
       game.player.run = object.animations[1];
@@ -341,6 +343,9 @@ class Game {
     //   game.environmentProxy = object;
     // });
 
+    const axesHelper = new THREE.AxesHelper( 500 );
+    game.scene.add( axesHelper );
+
     // Visible env
     loader.load(`${this.assetsPath}fbx/environment4.fbx`, (object) => {
       game.scene.add(object);
@@ -356,10 +361,10 @@ class Game {
             child.receiveShadow = true;
         }
       });
+     
       // mock the proxy with the original environment
       game.environmentProxy = object.children[1]; // TODO: remove camera from mesh
      // let door = { trigger: null, proxy: [], doors: [] };
-
 
       // object.traverse((child) => {
       //   if (child.isMesh) {
@@ -394,25 +399,6 @@ class Game {
 
       game.loadUSB(loader);
     }, null, this.onError);
-  }
-
-  createDummyEnvironment() {
-    const env = new THREE.Group();
-    env.name = 'Environment';
-    this.scene.add(env);
-
-    const geometry = new THREE.BoxBufferGeometry(150, 150, 150);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-
-    for (let x = -1000; x < 1000; x += 300) {
-      for (let z = -1000; z < 1000; z += 300) {
-        const block = new THREE.Mesh(geometry, material);
-        block.position.set(x, 75, z);
-        env.add(block);
-      }
-    }
-
-    this.environmentProxy = env;
   }
 
   playerControl(forward, turn) {
@@ -637,8 +623,20 @@ class Game {
   animate() {
     const game = this;
     const dt = this.clock.getDelta();
+    var bullets = game.player.bullets;
 
     requestAnimationFrame(() => { game.animate(); });
+
+    if(bullets) {
+      for(var i = bullets.length - 1; i >= 0; i--) {
+        if(!bullets[i].alive) {
+          bullets.splice(i, 1);
+          continue;
+        }
+        bullets[i].position.add(bullets[i].velocity);
+      }
+    }
+
 
     if (this.tweens.length > 0) {
       this.tweens.forEach((tween) => { tween.update(dt); });
@@ -654,6 +652,7 @@ class Game {
     }
     if (this.player.move != undefined) {
       if (this.player.move.forward != 0) this.movePlayer(dt);
+      this.player.object.rotationY += this.player.move.turn * dt;
       this.player.object.rotateY(this.player.move.turn * dt);
     }
 
@@ -1087,8 +1086,37 @@ class JoyStick {
         switch (e.code) {
           case 'ArrowUp': joystick.forward = 0.5; break;
           case 'ArrowDown': joystick.forward = -0.5; break;
-          case 'ArrowLeft': joystick.turn = -0.5; break;
-          case 'ArrowRight': joystick.turn = 0.5; break;
+          case 'ArrowLeft': joystick.turn = -1; break;
+          case 'ArrowRight': joystick.turn = 1; break;
+          case 'Space': // TODO: move it to a separate function
+            var bullet = new THREE.Mesh(
+              new THREE.SphereGeometry(10, 32, 32),
+              new THREE.MeshBasicMaterial({color: 0xffff00})
+            ),
+            scene = game.scene, 
+            position = game.player.object.position,
+            rY;
+
+            const speed = 10;
+
+            bullet.position.set(position.x, position.y + 20, position.z);
+            rY = game.player.object.rotationY;
+
+            bullet.velocity = new THREE.Vector3(
+              Math.sin(rY) * speed,
+              0 ,
+              Math.cos(rY) * speed
+            );
+
+            bullet.alive = true; 
+            setTimeout(function() {
+              bullet.alive = false;
+              scene.remove(bullet);
+            }, 10000);
+            game.player.bullets.push(bullet); 
+
+            scene.add(bullet); 
+            break;
         }
         joystick.moveByKeyboard(); // TODO: refactor
       });
