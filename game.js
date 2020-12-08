@@ -264,7 +264,7 @@ class Game {
       object.name = 'Character';
       const scale = 0.01;
       object.scale.set(scale, scale, scale);
-      object.position.set(0, 0, 0);
+      object.position.set(0, -20, -150);
       object.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -343,8 +343,16 @@ class Game {
     //   game.environmentProxy = object;
     // });
 
-    const axesHelper = new THREE.AxesHelper( 500 );
-    game.scene.add( axesHelper );
+    // const axesHelper = new THREE.AxesHelper( 500 );
+    // game.scene.add( axesHelper );
+
+    const geometry = new THREE.BoxGeometry( 40, 40, 40 );
+    const material = new THREE.MeshBasicMaterial( {color: 0xbd34eb} );
+    const cube = new THREE.Mesh( geometry, material );
+    cube.castShadow = true;
+    cube.receiveShadow = true;
+    game.player.cube = cube;
+    game.scene.add( cube );
 
     // Visible env
     loader.load(`${this.assetsPath}fbx/environment4.fbx`, (object) => {
@@ -629,11 +637,26 @@ class Game {
 
     if(bullets) {
       for(var i = bullets.length - 1; i >= 0; i--) {
-        if(!bullets[i].alive) {
+        var bullet = bullets[i];
+        if(!bullet.alive) {
           bullets.splice(i, 1);
           continue;
         }
-        bullets[i].position.add(bullets[i].velocity);
+ 
+        var pos = bullet.position.clone(),
+          dir = new THREE.Vector3(),
+          raycaster;
+
+          bullet.getWorldDirection(dir);
+          raycaster = new THREE.Raycaster(pos, dir);
+
+        let intersect = raycaster.intersectObject(game.player.cube);
+        if ((intersect.length > 0) && (intersect[0].distance < 50)) {
+          bullet.alive = false; 
+          game.scene.remove(bullet);
+        }
+
+        bullet.position.add(bullet.velocity); 
       }
     }
 
@@ -1109,7 +1132,7 @@ class JoyStick {
             );
 
             bullet.alive = true; 
-            setTimeout(function() {
+            setTimeout(function() { // TODO: move it to a separate funcion
               bullet.alive = false;
               scene.remove(bullet);
             }, 10000);
