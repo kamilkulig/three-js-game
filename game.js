@@ -245,8 +245,7 @@ class Game {
     const loader = new THREE.FBXLoader();
     const game = this;
 
-    // loader.load( `${this.assetsPath}fbx/girl-walk.fbx`, function ( object ) {
-    loader.load(`${this.assetsPath}fbx/Dragon_Baked_Actions_fbx_7.4_binary.fbx`, (object) => {
+    loader.load( `${this.assetsPath}fbx/01-Bulbasaur.fbx`, function ( object ) {
       object.mixer = new THREE.AnimationMixer(object);
       object.mixer.addEventListener('finished', (e) => {
         game.action = 'idle';
@@ -257,14 +256,15 @@ class Game {
       });
       object.castShadow = true;
       object.rotationY = 0;
+      object.children[0].visible = false; // TODO: remove the lamp
 
       game.player.mixer = object.mixer;
       game.player.root = object.mixer.getRoot();
 
       object.name = 'Character';
-      const scale = 0.01;
+      const scale = 0.2;
       object.scale.set(scale, scale, scale);
-      object.position.set(0, -20, -150);
+      object.position.set(0, -20, -20);
       object.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -275,9 +275,12 @@ class Game {
       game.scene.add(object);
       game.player.object = object;
       game.player.bullets = [];
-      game.player.walk = object.animations[0];
-      game.player.idle = object.animations[2];
-      game.player.run = object.animations[1];
+      // game.player.walk = object.animations[1];
+      // game.player.idle = object.animations[3];
+      // game.player.run = object.animations[1];
+      game.player.walk = object.animations[1];
+      game.player.idle = THREE.AnimationUtils.subclip(object.animations[3], 'idle', 0, 30, 24);
+      game.player.run = THREE.AnimationUtils.subclip(object.animations[3], 'run', 92, 105, 24);
 
       game.joystick = new JoyStick({
         onMove: game.playerControl,
@@ -428,10 +431,11 @@ class Game {
 
   createCameras() {
     const front = new THREE.Object3D();
-    front.position.set(0, 8000, 25000);
+    front.position.set(300, 100, 1000);
     front.parent = this.player.object;
 	    const back = new THREE.Object3D();
-    back.position.set(0, 8000, -25000);
+    //back.position.set(0, 8000, -25000);
+     back.position.set(0, 500, -800);
     back.parent = this.player.object;
     // const wide = new THREE.Object3D();
     // wide.position.set(178, 139, 465);
@@ -544,7 +548,17 @@ class Game {
     const action = this.player.mixer.clipAction(anim, this.player.root);
     this.player.mixer.stopAllAction();
     this.player.action = name;
-    action.timeScale = (name == 'walk' && this.player.move != undefined && this.player.move.forward < 0) ? -0.3 : 1;
+   
+
+    switch(name) {
+      case 'walk':
+        action.timeScale = (this.player.move != undefined && this.player.move.forward < 0) ? -0.3 : 1;
+        break;
+      case 'idle':
+        action.timeScale = 0.5;
+        break;
+    }
+
     action.time = 0;
     action.fadeIn(0.5);
     if (name == 'push-button' || name == 'gather-objects') action.loop = THREE.LoopOnce;
