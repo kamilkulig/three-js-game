@@ -210,7 +210,7 @@ class Game {
     const col = 0xbaecfd;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(col);
-    this.scene.fog = new THREE.Fog(col, 500, 1500);
+    //this.scene.fog = new THREE.Fog(col, 500, 1500);
 
     let light = new THREE.HemisphereLight(0xffffff, 0.5);
     light.position.set(0, 200, 0);
@@ -263,6 +263,7 @@ class Game {
 
       object.name = 'Character';
       const scale = 0.2;
+      const FPS = 24;
       object.scale.set(scale, scale, scale);
       object.position.set(0, -20, -20);
       object.traverse((child) => {
@@ -279,8 +280,9 @@ class Game {
       // game.player.idle = object.animations[3];
       // game.player.run = object.animations[1];
       game.player.walk = object.animations[1];
-      game.player.idle = THREE.AnimationUtils.subclip(object.animations[3], 'idle', 0, 30, 24);
-      game.player.run = THREE.AnimationUtils.subclip(object.animations[3], 'run', 92, 105, 24);
+      game.player.idle = THREE.AnimationUtils.subclip(object.animations[3], 'idle', 0, 30, FPS);
+      game.player.run = THREE.AnimationUtils.subclip(object.animations[3], 'run', 92, 105, FPS);
+      game.player.jump = THREE.AnimationUtils.subclip(object.animations[3], 'jump', 125, 145, FPS);
 
       game.joystick = new JoyStick({
         onMove: game.playerControl,
@@ -289,6 +291,22 @@ class Game {
 
       game.createCameras();
       game.loadEnvironment(loader);
+    }, null, this.onError);
+
+    // TODO: multiple leafs should be fired at once
+    // TODO: leaf shold stop whenever it touches anything
+    loader.load( `${this.assetsPath}fbx/leaf.fbx`, function ( object ) {
+      var leaf = object; 
+      leaf.scale.set(0.12, 0.12, 0.24);
+      leaf.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      game.player.razorLeaf = leaf;
+
     }, null, this.onError);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -355,7 +373,8 @@ class Game {
     cube.castShadow = true;
     cube.receiveShadow = true;
     game.player.cube = cube;
-    game.scene.add( cube );
+    cube.position.set(0, 0, 200);
+    //game.scene.add( cube );
 
     // Visible env
     loader.load(`${this.assetsPath}fbx/environment4.fbx`, (object) => {
@@ -423,10 +442,20 @@ class Game {
     }
 
     if (forward > 0) {
-      if (this.player.action != 'walk' && this.player.action != 'run') this.action = 'walk';
+      if (
+        this.player.action != 'jump' && 
+        this.player.action != 'walk' &&
+        this.player.action != 'run'
+      ) {
+        this.action = 'walk';
+      }  
     } else if (forward < -0.2) {
-      if (this.player.action != 'walk') this.action = 'walk';
-    } else if (this.player.action == 'walk' || this.player.action == 'run') this.action = 'idle';
+      if (this.player.action != 'walk') {
+        this.action = 'walk';
+      } 
+    } else if (this.player.action == 'walk' || this.player.action == 'run') { 
+      this.action = 'idle';
+    }
   }
 
   createCameras() {
@@ -548,7 +577,6 @@ class Game {
     const action = this.player.mixer.clipAction(anim, this.player.root);
     this.player.mixer.stopAllAction();
     this.player.action = name;
-   
 
     switch(name) {
       case 'walk':
@@ -561,7 +589,9 @@ class Game {
 
     action.time = 0;
     action.fadeIn(0.5);
-    if (name == 'push-button' || name == 'gather-objects') action.loop = THREE.LoopOnce;
+    if (name == 'jump') {
+      action.loop = THREE.LoopOnce;
+    }
     action.play();
     this.player.actionTime = Date.now();
   }
@@ -585,7 +615,18 @@ class Game {
 
     if (!blocked) {
       if (this.player.move.forward > 0) {
-        const speed = (this.player.action == 'run') ? 200 : 100;
+        var speed;
+        switch (this.player.action) {
+          case 'run':
+            speed = 200;
+            break;
+          case 'jump':
+            speed = 300;
+            break;
+          default:
+            speed = 100;
+        }
+        
         this.player.object.translateZ(dt * speed);
       } else {
         this.player.object.translateZ(-dt * 30);
@@ -657,20 +698,19 @@ class Game {
           continue;
         }
  
-        var pos = bullet.position.clone(),
-          dir = new THREE.Vector3(),
-          raycaster;
+        var raycaster = new THREE.Raycaster(bullet.position.clone(), bullet.velocity.clone());
 
-          bullet.getWorldDirection(dir);
-          raycaster = new THREE.Raycaster(pos, dir);
-
-        let intersect = raycaster.intersectObject(game.player.cube);
-        if ((intersect.length > 0) && (intersect[0].distance < 50)) {
-          bullet.alive = false; 
-          game.scene.remove(bullet);
+        // TODO: improve crash detection (now it works for vertical walls only)
+        let intersect = raycaster.intersectObject(game.environmentProxy);
+        if ((intersect.length > 0) && (intersect[0].distance < 20)) {
+          bullet.velocity = new THREE.Vector3(0,0,0);
+          //bullet.rotate(0, 0, 0);
         }
 
-        bullet.position.add(bullet.velocity); 
+        bullet.position.add(bullet.velocity);
+        if(bullet.velocity.x !== 0 || bullet.velocity.y  !== 0 || bullet.velocity.z  !== 0 ) {
+          bullet.rotateY(30 * dt, 10 * dt, 5 * dt);
+        }
       }
     }
 
@@ -687,6 +727,13 @@ class Game {
       const elapsedTime = Date.now() - this.player.actionTime;
       if (elapsedTime > 1000 && this.player.move.forward > 0) this.action = 'run';
     }
+
+    // TODO: refactor - below code too similiar to the above one
+    if (this.player.action == 'jump') {
+      const elapsedTime = Date.now() - this.player.actionTime;
+      if (elapsedTime > 650 && this.player.move.forward > 0) this.action = 'run';
+    }
+
     if (this.player.move != undefined) {
       if (this.player.move.forward != 0) this.movePlayer(dt);
       this.player.object.rotationY += this.player.move.turn * dt;
@@ -1125,16 +1172,23 @@ class JoyStick {
           case 'ArrowDown': joystick.forward = -0.5; break;
           case 'ArrowLeft': joystick.turn = -1; break;
           case 'ArrowRight': joystick.turn = 1; break;
-          case 'Space': // TODO: move it to a separate function
-            var bullet = new THREE.Mesh(
-              new THREE.SphereGeometry(10, 32, 32),
-              new THREE.MeshBasicMaterial({color: 0xffff00})
-            ),
+          case 'Space': 
+            if(game.action !== 'jump') {
+              game.action = 'jump';
+            }
+            break;
+          case 'KeyF': // TODO: move it to a separate function
+            //var bullet = new THREE.Mesh(
+            //  new THREE.SphereGeometry(10, 32, 32),
+            //  new THREE.MeshBasicMaterial({color: 0xffff00})
+            //),
+
+            var bullet = game.player.razorLeaf.clone(),
             scene = game.scene, 
             position = game.player.object.position,
             rY;
 
-            const speed = 10;
+            const speed = 20;
 
             bullet.position.set(position.x, position.y + 20, position.z);
             rY = game.player.object.rotationY;
