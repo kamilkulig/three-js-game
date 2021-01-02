@@ -245,6 +245,7 @@ class Game {
     const loader = new THREE.FBXLoader();
     const game = this;
 
+    // TODO: add orbit controls
     loader.load( `${this.assetsPath}fbx/01-Bulbasaur.fbx`, function ( object ) {
       object.mixer = new THREE.AnimationMixer(object);
       object.mixer.addEventListener('finished', (e) => {
@@ -265,7 +266,7 @@ class Game {
       const scale = 0.2;
       const FPS = 24;
       object.scale.set(scale, scale, scale);
-      object.position.set(0, -20, -20);
+
       object.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -274,11 +275,16 @@ class Game {
       });
 
       game.scene.add(object);
+      game.enemy = THREE.SkeletonUtils.clone(object);
+      game.enemy.position.set(0, -20, 300);
+      game.enemy.rotateY(Math.PI);
+      game.enemy.hp = 100;
+      game.scene.add(game.enemy);
+
       game.player.object = object;
+      game.player.object.position.set(0, -20, -20);
       game.player.bullets = [];
-      // game.player.walk = object.animations[1];
-      // game.player.idle = object.animations[3];
-      // game.player.run = object.animations[1];
+
       game.player.walk = object.animations[1];
       game.player.idle = THREE.AnimationUtils.subclip(object.animations[3], 'idle', 0, 30, FPS);
       game.player.run = THREE.AnimationUtils.subclip(object.animations[3], 'run', 92, 105, FPS);
@@ -306,6 +312,10 @@ class Game {
       });
 
       game.player.razorLeaf = leaf;
+
+      var boundingBox = new THREE.Box3().setFromObject(leaf),
+      size = boundingBox.getSize(); // Returns Vector3
+      console.log('Leaf size ', size);
 
     }, null, this.onError);
 
@@ -515,7 +525,6 @@ class Game {
     const pos = this.player.object.position.clone();
     pos.y += 200;
     const raycaster = new THREE.Raycaster(pos, dir);
-    const gravity = 30;
     const box = this.environmentProxy;
 
     const intersect = raycaster.intersectObject(box);
@@ -621,7 +630,7 @@ class Game {
             speed = 200;
             break;
           case 'jump':
-            speed = 300;
+            speed = 350;
             break;
           default:
             speed = 100;
@@ -697,20 +706,70 @@ class Game {
           bullets.splice(i, 1);
           continue;
         }
- 
-        var raycaster = new THREE.Raycaster(bullet.position.clone(), bullet.velocity.clone());
 
-        // TODO: improve crash detection (now it works for vertical walls only)
-        let intersect = raycaster.intersectObject(game.environmentProxy);
-        if ((intersect.length > 0) && (intersect[0].distance < 20)) {
-          bullet.velocity = new THREE.Vector3(0,0,0);
-          //bullet.rotate(0, 0, 0);
+        if(!bullet.velocity.x && !bullet.velocity.y && !bullet.velocity.z) {
+          continue;
+        }
+        var dir =  bullet.velocity.clone().normalize(),
+          pos = bullet.position.clone(),
+          box = game.environmentProxy;
+          
+        // TODO: improve collision detetion mechanism
+        
+        pos.y -= 9;
+
+        var raycaster = new THREE.Raycaster(pos, dir);
+        var distance = 20;
+
+        // // visualize raycaster for test purposes
+        // // dot
+        // var geometry = new THREE.SphereGeometry( 1, 32, 32 );
+        // var material = new THREE.MeshBasicMaterial( {color: 0xff0000} );
+        // var sphere = new THREE.Mesh( geometry, material );
+        // sphere.position.set(pos.x, pos.y, pos.z);
+        // game.scene.add(sphere);
+
+        // // line
+        // var material2 = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+        // var points = [];
+        // points.push( new THREE.Vector3(pos.x, pos.y, pos.z));
+        // points.push(
+        //   new THREE.Vector3(
+        //     pos.x + dir.x * distance,
+        //     pos.y  + dir.y * distance,
+        //     pos.z  + dir.z * distance
+        //   )
+        // );
+
+        // var geometry2 = new THREE.BufferGeometry().setFromPoints( points );
+        // var line = new THREE.Line( geometry2, material2 );
+        // game.scene.add( line );
+
+        let intersect = raycaster.intersectObject(box);
+        if (intersect.length > 0) {
+         //console.log(intersect[0].distance);
+          if(intersect[0].distance < distance) {
+            bullet.velocity = new THREE.Vector3(0,0,0);
+            bullet.alive = false;
+          }
         }
 
+        // Check if the enemy is hit
+        intersect = raycaster.intersectObject(game.enemy.children[2]);
+        if (intersect.length > 0) {
+          if(intersect[0].distance < distance) {
+            bullet.velocity = new THREE.Vector3(0,0,0);
+            bullet.alive = false;
+            console.log('Enemy hit');
+          }
+        }
+
+        
         bullet.position.add(bullet.velocity);
         if(bullet.velocity.x !== 0 || bullet.velocity.y  !== 0 || bullet.velocity.z  !== 0 ) {
           bullet.rotateY(30 * dt, 10 * dt, 5 * dt);
-        }
+        } 
+
       }
     }
 
