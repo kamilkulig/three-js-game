@@ -77,7 +77,7 @@ class Game {
     this.mode = this.modes.PRELOAD;
 
     document.getElementById('camera-btn').onclick = function () { game.switchCamera(); };
-    document.getElementById('briefcase-btn').onclick = function () { game.toggleBriefcase(); };
+    //document.getElementById('briefcase-btn').onclick = function () { game.toggleBriefcase(); };
     document.getElementById('action-btn').onclick = function () { game.contextAction(); };
     document.getElementById('sfx-btn').onclick = function () { game.toggleSound(); };
 
@@ -760,7 +760,8 @@ class Game {
           if(intersect[0].distance < distance) {
             bullet.velocity = new THREE.Vector3(0,0,0);
             bullet.alive = false;
-            console.log('Enemy hit');
+            game.enemy.hp -= 10;
+            document.getElementById('hp-bar-points').style.width = game.enemy.hp + '%';
           }
         }
 
