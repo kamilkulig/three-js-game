@@ -32,7 +32,7 @@ class Game {
 
     this.messages = {
       text: [
-        'Welcome to LostTreasure',
+        'Welcome to Bulbasaur duel!',
         'GOOD LUCK!',
       ],
       index: 0,
@@ -56,15 +56,7 @@ class Game {
 
     const options = {
       assets: [
-        `${this.assetsPath}sfx/gliss.${sfxExt}`,
-        `${this.assetsPath}sfx/factory.${sfxExt}`,
-        `${this.assetsPath}sfx/button.${sfxExt}`,
-        `${this.assetsPath}sfx/door.${sfxExt}`,
-        `${this.assetsPath}sfx/fan.${sfxExt}`,
-        `${this.assetsPath}fbx/environment4.fbx`,
-        `${this.assetsPath}fbx/proxy.fbx`,
-        `${this.assetsPath}fbx/girl-walk.fbx`,
-        `${this.assetsPath}fbx/usb.fbx`,
+        `${this.assetsPath}sfx/i-choose-you.${sfxExt}`
       ],
       oncomplete() {
         game.init();
@@ -77,7 +69,6 @@ class Game {
     this.mode = this.modes.PRELOAD;
 
     document.getElementById('camera-btn').onclick = function () { game.switchCamera(); };
-    //document.getElementById('briefcase-btn').onclick = function () { game.toggleBriefcase(); };
     document.getElementById('action-btn').onclick = function () { game.contextAction(); };
     document.getElementById('sfx-btn').onclick = function () { game.toggleSound(); };
 
@@ -85,20 +76,7 @@ class Game {
 
     this.clock = new THREE.Clock();
 
-    // this.init();
-    // this.animate();
     const preloader = new Preloader(options);
-  }
-
-  toggleBriefcase() {
-    const briefcase = document.getElementById('briefcase');
-    const open = (briefcase.style.opacity > 0);
-
-    if (open) {
-      briefcase.style.opacity = '0';
-    } else {
-      briefcase.style.opacity = '1';
-    }
   }
 
   toggleSound() {
@@ -125,46 +103,6 @@ class Game {
         this.action = this.onAction.action;
       }
     }
-
-    const game = this;
-
-    if (this.onAction.mode !== undefined) {
-      switch (this.onAction.mode) {
-        case 'open-doors':
-          this.sfx.door.play();
-          this.sfx.button.play();
-          const door = this.doors[this.onAction.index];
-          const left = door.doors[0];
-          const right = door.doors[1];
-          this.cameraTarget = { position: left.position.clone(), target: left.position.clone() };
-          this.cameraTarget.position.y += 150;
-          this.cameraTarget.position.x -= 950;
-          // target, channel, endValue, duration, oncomplete, easing="inOutQuad"){
-          this.tweens.push(new Tween(left.position, 'z', left.position.z - 240, 2, function () {
-            game.tweens.splice(game.tweens.indexOf(this), 1);
-          }));
-          this.tweens.push(new Tween(right.position, 'z', right.position.z + 240, 2, function () {
-            game.tweens.splice(game.tweens.indexOf(this), 1);
-            delete game.cameraTarget;
-            const door = game.doors[this.onAction.index];
-            const left = door.doors[0];
-            const right = door.doors[1];
-            const leftProxy = door.proxy[0];
-            const rightProxy = door.proxy[1];
-            leftProxy.position = left.position.clone();
-            rightProxy.position = right.position.clone();
-          }));
-          break;
-        // case 'collect':
-        //   this.activeCamera = this.player.cameras.collect;
-        //   this.collect[this.onAction.index].visible = false;
-        //   if (this.collected == undefined) this.collected = [];
-        //   this.collected.push(this.onAction.index);
-        //   document.getElementById('briefcase').children[0].children[0].children[this.onAction.index].children[0].src = this.onAction.src;
-
-        //   break;
-      }
-    }
   }
 
   switchCamera(fade = 0.05) {
@@ -185,14 +123,12 @@ class Game {
   initSfx() {
     this.sfx = {};
     this.sfx.context = new (window.AudioContext || window.webkitAudioContext)();
-    const list = ['gliss', 'door', 'factory', 'button', 'fan'];
+    const list = ['i-choose-you'];
     const game = this;
     list.forEach((item) => {
       game.sfx[item] = new SFX({
         context: game.sfx.context,
         src: { mp3: `${game.assetsPath}sfx/${item}.mp3`, ogg: `${game.assetsPath}sfx/${item}.ogg` },
-        loop: (item == 'factory' || item == 'fan'),
-        autoplay: (item == 'factory' || item == 'fan'),
         volume: 0.3,
       });
     });
@@ -202,19 +138,32 @@ class Game {
     this.player.cameras.active = object;
   }
 
+
+
   init() {
-    this.mode = this.modes.INITIALISING;
+    const col = 0xbaecfd,
+      loader = new THREE.FBXLoader(),
+      game = this;
 
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+    var light, 
+      scene,
+      player = game.player,
+      renderer;
 
-    const col = 0xbaecfd;
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(col);
+    game.mode = game.modes.INITIALISING;
+
+    game.camera = new THREE.PerspectiveCamera
+      (
+        45, window.innerWidth / window.innerHeight, 1, 2000
+      );
+
+    scene = game.scene = new THREE.Scene();
+    scene.background = new THREE.Color(col);
     //this.scene.fog = new THREE.Fog(col, 500, 1500);
 
-    let light = new THREE.HemisphereLight(0xffffff, 0.5);
+    light = new THREE.HemisphereLight(0xffffff, 0.5);
     light.position.set(0, 200, 0);
-    this.scene.add(light);
+    scene.add(light);
 
     light = new THREE.DirectionalLight(0xffd633, 0.5);
     light.position.set(0, 2000, 1000);
@@ -226,69 +175,54 @@ class Game {
     light.shadow.camera.left = -3000;
     light.shadow.camera.right = 3000;
     light.shadow.camera.far = 3000;
-    this.scene.add(light);
-
-    // ground
-    const mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2000, 2000), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
-    mesh.rotation.x = -Math.PI / 2;
-    // mesh.position.y = -100;
-    mesh.receiveShadow = true;
-    // this.scene.add( mesh );
-
-    const grid = new THREE.GridHelper(2000, 40, 0x000000, 0x000000);
-    // grid.position.y = -100;
-    grid.material.opacity = 0.2;
-    grid.material.transparent = true;
-    // this.scene.add( grid );
-
-    // model
-    const loader = new THREE.FBXLoader();
-    const game = this;
+    scene.add(light);
 
     // TODO: add orbit controls
-    loader.load( `${this.assetsPath}fbx/01-Bulbasaur.fbx`, function ( object ) {
-      object.mixer = new THREE.AnimationMixer(object);
-      object.mixer.addEventListener('finished', (e) => {
+
+    // Load and init the model
+    loader.load(`${game.assetsPath}fbx/01-Bulbasaur.fbx`, function (model) {
+      const SCALE = 0.2,
+        FPS = 24;
+      
+      var mixer,
+        player = game.player,
+        enemy,
+        animations = model.animations[3],
+        subclip = THREE.AnimationUtils.subclip,
+
+      mixer = model.mixer = new THREE.AnimationMixer(model);
+      mixer.addEventListener('finished', (e) => {
         game.action = 'idle';
-        if (game.player.cameras.active == game.player.cameras.collect) {
-          game.activeCamera = game.player.cameras.back;
-          game.toggleBriefcase();
-        }
       });
-      object.castShadow = true;
-      object.rotationY = 0;
-      object.children[0].visible = false; // TODO: remove the lamp
+      model.castShadow = true;
+      model.rotationY = 0;
+      model.children[0].visible = false; // TODO: remove the lamp
 
-      game.player.mixer = object.mixer;
-      game.player.root = object.mixer.getRoot();
+      player.mixer = mixer;
+      player.root = mixer.getRoot();
 
-      object.name = 'Character';
-      const scale = 0.2;
-      const FPS = 24;
-      object.scale.set(scale, scale, scale);
+      model.name = 'Bulbasaur';
+      model.scale.set(SCALE, SCALE, SCALE);
 
-      object.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
+      enableShadow.call(model);
 
-      game.scene.add(object);
-      game.enemy = THREE.SkeletonUtils.clone(object);
-      game.enemy.position.set(0, -20, 300);
-      game.enemy.rotateY(Math.PI);
-      game.enemy.hp = 100;
-      game.scene.add(game.enemy);
+      scene.add(model);
 
-      game.player.object = object;
-      game.player.object.position.set(0, -20, -20);
-      game.player.bullets = [];
+      player.model = model;
+      player.model.position.set(0, -20, -20);
+      player.bullets = [];
 
-      game.player.walk = object.animations[1];
-      game.player.idle = THREE.AnimationUtils.subclip(object.animations[3], 'idle', 0, 30, FPS);
-      game.player.run = THREE.AnimationUtils.subclip(object.animations[3], 'run', 92, 105, FPS);
-      game.player.jump = THREE.AnimationUtils.subclip(object.animations[3], 'jump', 125, 145, FPS);
+      player.walk = model.animations[1];
+      player.idle = subclip(animations, 'idle', 0, 30, FPS);
+      player.run = subclip(animations, 'run', 92, 105, FPS);
+      player.jump = subclip(animations, 'jump', 125, 145, FPS);
+
+      // Enemy model for debugging purposes
+      enemy = game.enemy = THREE.SkeletonUtils.clone(model);
+      enemy.position.set(0, -20, 300);
+      enemy.rotateY(Math.PI);
+      enemy.hp = 100;
+      scene.add(enemy);
 
       game.joystick = new JoyStick({
         onMove: game.playerControl,
@@ -297,148 +231,51 @@ class Game {
 
       game.createCameras();
       game.loadEnvironment(loader);
-    }, null, this.onError);
+    }, null, game.onError);
 
     // TODO: multiple leafs should be fired at once
-    // TODO: leaf shold stop whenever it touches anything
-    loader.load( `${this.assetsPath}fbx/leaf.fbx`, function ( object ) {
-      var leaf = object; 
+    
+    // Leaf model 
+    loader.load( `${game.assetsPath}fbx/leaf.fbx`, function (leaf) {
       leaf.scale.set(0.12, 0.12, 0.24);
-      leaf.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
+      enableShadow.call(leaf);
 
-      game.player.razorLeaf = leaf;
+      player.razorLeaf = leaf;
+    }, null, game.onError);
 
-      var boundingBox = new THREE.Box3().setFromObject(leaf),
-      size = boundingBox.getSize(); // Returns Vector3
-      console.log('Leaf size ', size);
-
-    }, null, this.onError);
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-    this.renderer.shadowMapDebug = true;
-    this.container.appendChild(this.renderer.domElement);
+    renderer = game.renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+    renderer.shadowMapDebug = true;
+    game.container.appendChild(renderer.domElement);
 
     window.addEventListener('resize', () => { game.onWindowResize(); }, false);
 
     // stats
-    if (this.debug) {
-      this.stats = new Stats();
-      this.container.appendChild(this.stats.dom);
-    }
+    // if (game.debug) {
+    //   game.stats = new Stats();
+    //   game.container.appendChild(game.stats.dom);
+    // }
 
-    this.initSfx();
+    game.initSfx();
   }
 
-  loadUSB(loader) {
-    const game = this;
-
-    //loader.load(`${this.assetsPath}fbx/usb.fbx`, (object) => {
-      // game.scene.add(object);
-
-      // const scale = 0.2;
-      // object.scale.set(scale, scale, scale);
-      // object.name = 'usb';
-      // object.position.set(-416, 0.8, -472);
-      // object.castShadow = true;
-
-      // game.collect.push(object);
-
-      // object.traverse((child) => {
-      //   if (child.isMesh) {
-      //     child.castShadow = true;
-      //     child.receiveShadow = true;
-      //   }
-      // });
-
-      //game.loadNextAnim(loader);
-   // }, null, this.onError);
-
-    game.loadNextAnim(loader);
-
-  }
 
   loadEnvironment(loader) {
     const game = this;
 
-    // // Env proxy
-    // loader.load(`${this.assetsPath}fbx/proxy.fbx`, (object) => {
-    //   game.environmentProxy = object;
-    // });
-
-    // const axesHelper = new THREE.AxesHelper( 500 );
-    // game.scene.add( axesHelper );
-
-    const geometry = new THREE.BoxGeometry( 40, 40, 40 );
-    const material = new THREE.MeshBasicMaterial( {color: 0xbd34eb} );
-    const cube = new THREE.Mesh( geometry, material );
-    cube.castShadow = true;
-    cube.receiveShadow = true;
-    game.player.cube = cube;
-    cube.position.set(0, 0, 200);
-    //game.scene.add( cube );
-
     // Visible env
-    loader.load(`${this.assetsPath}fbx/environment4.fbx`, (object) => {
-      game.scene.add(object);
-      //game.doors = [];
-      //game.fans = [];
-
-      object.receiveShadow = true;
-      //object.scale.set(0.8, 0.8, 0.8);
-      object.name = 'Environment';
-      object.traverse((child) => {
-        if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-        }
-      });
+    loader.load(`${this.assetsPath}fbx/environment4.fbx`, (model) => {
+      game.scene.add(model);
+      model.name = 'Environment';
+      enableShadow.call(model);
      
       // mock the proxy with the original environment
-      game.environmentProxy = object.children[1]; // TODO: remove camera from mesh
-     // let door = { trigger: null, proxy: [], doors: [] };
-
-      // object.traverse((child) => {
-      //   if (child.isMesh) {
-      //     if (child.name.includes('main')) {
-      //       child.castShadow = true;
-      //       child.receiveShadow = true;
-      //     } else if (child.name.includes('mentproxy')) {
-      //       child.material.visible = false;
-      //       game.environmentProxy = child;
-      //     } else if (child.name.includes('door-proxy')) {
-      //       child.material.visible = false;
-      //       door.proxy.push(child);
-      //       checkDoor();
- 			// 		} else if (child.name.includes('door')) {
-      //       door.doors.push(child);
-      //       checkDoor();
-      //     } else if (child.name.includes('fan')) {
-      //       game.fans.push(child);
-      //     }
-      //   } else if (child.name.includes('Door-null')) {
-      //     door.trigger = child;
-      //     checkDoor();
-      //   }
-
-      //   function checkDoor() {
-      //     if (door.trigger !== null && door.proxy.length == 2 && door.doors.length == 2) {
-      //       game.doors.push({ ...door });
-      //       door = { trigger: null, proxy: [], doors: [] };
-      //     }
-      //   }
-      // });
-
-      game.loadUSB(loader);
-    }, null, this.onError);
+      game.environmentProxy = model.children[1]; // TODO: remove camera from mesh
+      game.loadNextAnim(loader);
+    }, null, game.onError);
   }
 
   playerControl(forward, turn) {
@@ -469,67 +306,51 @@ class Game {
   }
 
   createCameras() {
-    const front = new THREE.Object3D();
+    const front = new THREE.Object3D(),
+      back = new THREE.Object3D();
+
+    var player = this.player;
+    
     front.position.set(300, 100, 1000);
-    front.parent = this.player.object;
-	    const back = new THREE.Object3D();
-    //back.position.set(0, 8000, -25000);
-     back.position.set(0, 500, -800);
-    back.parent = this.player.object;
-    // const wide = new THREE.Object3D();
-    // wide.position.set(178, 139, 465);
-    // wide.parent = this.player.object;
-    // const overhead = new THREE.Object3D();
-    // overhead.position.set(0, 400, 0);
-    // overhead.parent = this.player.object;
-    // const collect = new THREE.Object3D();
-    // collect.position.set(40, 82, 94);
-    // collect.parent = this.player.object;
-	 this.player.cameras = { front, back }; // , wide, overhead, collect };
-    game.activeCamera = this.player.cameras.back;
+    front.parent = player.model;
+	    
+    back.position.set(0, 500, -800);
+    back.parent = player.model;
+
+	  player.cameras = { front, back }; 
+    game.activeCamera = player.cameras.back;
     game.cameraFade = 1;
-    // setTimeout( function(){
-    // 	game.activeCamera = game.player.cameras.back;
-    // 	game.cameraFade = 0.01;
-    // 	setTimeout(function(){ game.cameraFade = 0.1; }, 1500);
-    // }, 2000)
+
   }
+
+  // TODO: continue here
 
   loadNextAnim(loader) {
     const anim = this.anims.pop();
     const game = this;
-    // loader.load(`${this.assetsPath}fbx/${anim}.fbx`, (object) => {
-    //   game.player[anim] = object.animations[0];
-    //   if (anim == 'push-button') {
-    //     game.player[anim].loop = false;
-    //   }
-    //   if (game.anims.length > 0) {
-    //     game.loadNextAnim(loader);
-    //   } else {
-        delete game.anims;
-        game.action = 'idle';
-        game.initPlayerPosition();
-        game.mode = game.modes.ACTIVE;
-        const overlay = document.getElementById('overlay');
-    			overlay.classList.add('fade-in');
-        overlay.addEventListener('animationend', (evt) => {
-          evt.target.style.display = 'none';
-        }, false);
-    //   }
-    // }, null, this.onError);
+      delete game.anims;
+      game.action = 'idle';
+      game.initPlayerPosition();
+      game.mode = game.modes.ACTIVE;
+      const overlay = document.getElementById('overlay');
+        overlay.classList.add('fade-in');
+      overlay.addEventListener('animationend', (evt) => {
+        evt.target.style.display = 'none';
+      }, false);
+
   }
 
   initPlayerPosition() {
     // cast down
     const dir = new THREE.Vector3(0, -1, 0);
-    const pos = this.player.object.position.clone();
+    const pos = this.player.model.position.clone();
     pos.y += 200;
     const raycaster = new THREE.Raycaster(pos, dir);
     const box = this.environmentProxy;
 
     const intersect = raycaster.intersectObject(box);
     if (intersect.length > 0) {
-      this.player.object.position.y = pos.y - intersect[0].distance;
+      this.player.model.position.y = pos.y - intersect[0].distance;
     }
   }
 
@@ -606,10 +427,10 @@ class Game {
   }
 
   movePlayer(dt) {
-    const pos = this.player.object.position.clone();
+    const pos = this.player.model.position.clone();
     pos.y += 60;
     const dir = new THREE.Vector3();
-    this.player.object.getWorldDirection(dir);
+    this.player.model.getWorldDirection(dir);
     if (this.player.move.forward < 0) dir.negate();
     let raycaster = new THREE.Raycaster(pos, dir);
     let blocked = false;
@@ -636,33 +457,33 @@ class Game {
             speed = 100;
         }
         
-        this.player.object.translateZ(dt * speed);
+        this.player.model.translateZ(dt * speed);
       } else {
-        this.player.object.translateZ(-dt * 30);
+        this.player.model.translateZ(-dt * 30);
       }
     }
 
     if (this.environmentProxy != undefined) {
       // cast left
       dir.set(-1, 0, 0);
-      dir.applyMatrix4(this.player.object.matrix);
+      dir.applyMatrix4(this.player.model.matrix);
       dir.normalize();
       raycaster = new THREE.Raycaster(pos, dir);
 
       let intersect = raycaster.intersectObject(box);
       if (intersect.length > 0) {
-        if (intersect[0].distance < 50) this.player.object.translateX(50 - intersect[0].distance);
+        if (intersect[0].distance < 50) this.player.model.translateX(50 - intersect[0].distance);
       }
 
       // cast right
       dir.set(1, 0, 0);
-      dir.applyMatrix4(this.player.object.matrix);
+      dir.applyMatrix4(this.player.model.matrix);
       dir.normalize();
       raycaster = new THREE.Raycaster(pos, dir);
 
       intersect = raycaster.intersectObject(box);
       if (intersect.length > 0) {
-        if (intersect[0].distance < 50) this.player.object.translateX(intersect[0].distance - 50);
+        if (intersect[0].distance < 50) this.player.model.translateX(intersect[0].distance - 50);
       }
 
       // cast down
@@ -674,18 +495,18 @@ class Game {
       intersect = raycaster.intersectObject(box);
       if (intersect.length > 0) {
         const targetY = pos.y - intersect[0].distance;
-        if (targetY > this.player.object.position.y) {
+        if (targetY > this.player.model.position.y) {
           // Going up
-          this.player.object.position.y = 0.8 * this.player.object.position.y + 0.2 * targetY;
+          this.player.model.position.y = 0.8 * this.player.model.position.y + 0.2 * targetY;
           this.player.velocityY = 0;
-        } else if (targetY < this.player.object.position.y) {
+        } else if (targetY < this.player.model.position.y) {
           // Falling
           if (this.player.velocityY == undefined) this.player.velocityY = 0;
           this.player.velocityY += dt * gravity;
-          this.player.object.position.y -= this.player.velocityY;
-          if (this.player.object.position.y < targetY) {
+          this.player.model.position.y -= this.player.velocityY;
+          if (this.player.model.position.y < targetY) {
             this.player.velocityY = 0;
-            this.player.object.position.y = targetY;
+            this.player.model.position.y = targetY;
           }
         }
       }
@@ -796,8 +617,8 @@ class Game {
 
     if (this.player.move != undefined) {
       if (this.player.move.forward != 0) this.movePlayer(dt);
-      this.player.object.rotationY += this.player.move.turn * dt;
-      this.player.object.rotateY(this.player.move.turn * dt);
+      this.player.model.rotationY += this.player.move.turn * dt;
+      this.player.model.rotateY(this.player.move.turn * dt);
     }
 
     if (this.player.cameras != undefined && this.player.cameras.active != undefined) {
@@ -807,7 +628,7 @@ class Game {
         this.camera.position.copy(this.cameraTarget.position);
         pos = this.cameraTarget.target;
       } else {
-        pos = this.player.object.position.clone();
+        pos = this.player.model.position.clone();
         pos.y += 60;
       }
       this.camera.lookAt(pos);
@@ -818,7 +639,7 @@ class Game {
 
     if (this.doors !== undefined) {
       this.doors.forEach((door) => {
-        if (game.player.object.position.distanceTo(door.trigger.position) < 100) {
+        if (game.player.model.position.distanceTo(door.trigger.position) < 100) {
           game.actionBtn.style = 'display:block;';
           game.onAction = { action: 'push-button', mode: 'open-doors', index: 0 };
           trigger = true;
@@ -828,7 +649,7 @@ class Game {
 
     if (this.collect !== undefined && !trigger) {
       this.collect.forEach((object) => {
-        if (object.visible && game.player.object.position.distanceTo(object.position) < 100) {
+        if (object.visible && game.player.model.position.distanceTo(object.position) < 100) {
           game.actionBtn.style = 'display:block;';
           game.onAction = {
             action: 'gather-objects', mode: 'collect', index: 0, src: 'usb.jpg',
@@ -843,7 +664,7 @@ class Game {
     if (this.fans !== undefined) {
       let vol = 0;
       this.fans.forEach((fan) => {
-        const dist = fan.position.distanceTo(game.player.object.position);
+        const dist = fan.position.distanceTo(game.player.model.position);
         const tmpVol = 1 - dist / 1000;
         if (tmpVol > vol) vol = tmpVol;
         fan.rotateZ(dt);
@@ -1245,13 +1066,13 @@ class JoyStick {
 
             var bullet = game.player.razorLeaf.clone(),
             scene = game.scene, 
-            position = game.player.object.position,
+            position = game.player.model.position,
             rY;
 
             const speed = 20;
 
             bullet.position.set(position.x, position.y + 20, position.z);
-            rY = game.player.object.rotationY;
+            rY = game.player.model.rotationY;
 
             bullet.velocity = new THREE.Vector3(
               Math.sin(rY) * speed,
@@ -1466,3 +1287,15 @@ class Preloader {
     xobj.send(null);
   }
 }
+
+
+
+  // Util function for fbx models
+  function enableShadow() {
+    this.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+  }
