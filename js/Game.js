@@ -17,8 +17,10 @@ class Game {
     this.stats;
     this.controls;
     this.camera;
-    this.scenes;
+    this.camera2;
+    this.scene;
     this.renderer;
+    this.renderer2;
     this.cellSize = 16;
     this.interactive = false;
     this.levelIndex = 0;
@@ -45,7 +47,13 @@ class Game {
 
     this.container = document.createElement('div');
     this.container.style.height = '100%';
+    this.container.style.float = 'left';
     document.body.appendChild(this.container);
+
+    this.container2 = document.createElement('div');
+    this.container2.style.height = '100%';
+    this.container2.style.left = '50%';
+    document.body.appendChild(this.container2);
 
     const sfxExt = SFX.supportsAudioType('mp3') ? 'mp3' : 'ogg';
     const game = this;
@@ -147,14 +155,12 @@ class Game {
     var light, 
       scene,
       player = game.player,
-      renderer;
+      renderer,
+      renderer2;
 
     game.mode = game.modes.INITIALISING;
 
-    game.camera = new THREE.PerspectiveCamera
-      (
-        45, window.innerWidth / window.innerHeight, 1, 2000
-      );
+    game.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
 
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
@@ -244,11 +250,21 @@ class Game {
 
     renderer = game.renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth / 2, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
     renderer.shadowMapDebug = true;
     game.container.appendChild(renderer.domElement);
+
+    // TODO: refactor (code repetition)
+    renderer2 = game.renderer2 = new THREE.WebGLRenderer({ antialias: true });
+    renderer2.setPixelRatio(window.devicePixelRatio);
+    renderer2.setSize(window.innerWidth / 2, window.innerHeight);
+    renderer2.shadowMap.enabled = true;
+    renderer2.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+    renderer2.shadowMapDebug = true;
+    game.container2.appendChild(renderer2.domElement);
+
 
     window.addEventListener('resize', () => { game.onWindowResize(); }, false);
 
@@ -394,10 +410,11 @@ class Game {
 	 }
 
   onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.aspect = window.innerWidth / 2 / window.innerHeight;
     this.camera.updateProjectionMatrix();
 
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+    this.renderer2.setSize(window.innerWidth / 2, window.innerHeight);
   }
 
   set action(name) {
@@ -623,6 +640,7 @@ class Game {
     }
 
     this.renderer.render(this.scene, this.camera);
+    this.renderer2.render(this.scene, this.camera);
 
     if (this.stats != undefined) this.stats.update();
   }
