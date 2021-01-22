@@ -13,14 +13,15 @@ class Game {
     this.mode = this.modes.NONE;
 
     this.container;
-    this.player = { };
+    this.player = new Player(this, {x: 0, y: 0, z:0});
+    //this.player2 = { };
     this.stats;
     this.controls;
     this.camera;
-    this.camera2;
+    //this.camera2;
     this.scene;
     this.renderer;
-    this.renderer2;
+    //this.renderer2;
     this.cellSize = 16;
     this.interactive = false;
     this.levelIndex = 0;
@@ -145,6 +146,10 @@ class Game {
     this.player.cameras.active = object;
   }
 
+  // set activeCamera2(object) {
+  //   this.player2.cameras.active = object;
+  // }
+
 
 
   init() {
@@ -161,6 +166,7 @@ class Game {
     game.mode = game.modes.INITIALISING;
 
     game.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
+    game.camera2 = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
 
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
@@ -182,52 +188,42 @@ class Game {
     light.shadow.camera.far = 3000;
     scene.add(light);
 
-    // TODO: add orbit controls
 
     // Load and init the model
+    // TODO: make it another function
     loader.load(`${game.assetsPath}fbx/01-Bulbasaur.fbx`, function (model) {
+      
       const SCALE = 0.2,
         FPS = 24;
       
-      var mixer,
-        player = game.player,
-        enemy,
+      var player1 = game.player,
         animations = model.animations[3],
         subclip = THREE.AnimationUtils.subclip,
+        anims = {};
 
-      mixer = model.mixer = new THREE.AnimationMixer(model);
-      mixer.addEventListener('finished', (e) => {
-        game.action = 'idle';
-      });
+      // Model
       model.castShadow = true;
       model.rotationY = 0;
       model.children[0].visible = false; // TODO: remove the lamp
-
-      player.mixer = mixer;
-      player.root = mixer.getRoot();
-
       model.name = 'Bulbasaur';
       model.scale.set(SCALE, SCALE, SCALE);
-
       enableShadow.call(model);
+      anims.walk = model.animations[1];
+      anims.idle = subclip(animations, 'idle', 0, 30, FPS);
+      anims.run = subclip(animations, 'run', 92, 105, FPS);
+      anims.jump = subclip(animations, 'jump', 125, 145, FPS);
 
-      scene.add(model);
 
-      player.model = model;
-      player.model.position.set(0, -20, -20);
-      player.bullets = [];
+      // Players
+      player1.initModel(THREE.SkeletonUtils.clone(model), anims);
 
-      player.walk = model.animations[1];
-      player.idle = subclip(animations, 'idle', 0, 30, FPS);
-      player.run = subclip(animations, 'run', 92, 105, FPS);
-      player.jump = subclip(animations, 'jump', 125, 145, FPS);
 
       // Enemy model for debugging purposes
-      enemy = game.enemy = THREE.SkeletonUtils.clone(model);
-      enemy.position.set(0, -20, 300);
-      enemy.rotateY(Math.PI);
-      enemy.hp = 100;
-      scene.add(enemy);
+      // enemy = game.enemy = THREE.SkeletonUtils.clone(model);
+      // enemy.position.set(0, -20, 300);
+      // enemy.rotateY(Math.PI);
+      // enemy.hp = 100;
+      // scene.add(enemy);
 
       game.joystick = new JoyStick({
         onMove: game.playerControl,
@@ -257,13 +253,13 @@ class Game {
     game.container.appendChild(renderer.domElement);
 
     // TODO: refactor (code repetition)
-    renderer2 = game.renderer2 = new THREE.WebGLRenderer({ antialias: true });
-    renderer2.setPixelRatio(window.devicePixelRatio);
-    renderer2.setSize(window.innerWidth / 2, window.innerHeight);
-    renderer2.shadowMap.enabled = true;
-    renderer2.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-    renderer2.shadowMapDebug = true;
-    game.container2.appendChild(renderer2.domElement);
+    // renderer2 = game.renderer2 = new THREE.WebGLRenderer({ antialias: true });
+    // renderer2.setPixelRatio(window.devicePixelRatio);
+    // renderer2.setSize(window.innerWidth / 2, window.innerHeight);
+    // renderer2.shadowMap.enabled = true;
+    // renderer2.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+    // renderer2.shadowMapDebug = true;
+    // game.container2.appendChild(renderer2.domElement);
 
 
     window.addEventListener('resize', () => { game.onWindowResize(); }, false);
@@ -320,9 +316,12 @@ class Game {
     }
   }
 
+  // TODO: remove code repetitions
   createCameras() {
     const front = new THREE.Object3D(),
-      back = new THREE.Object3D();
+      back = new THREE.Object3D(),
+      front2 = new THREE.Object3D(),
+      back2 = new THREE.Object3D();
 
     var player = this.player;
     
@@ -334,6 +333,18 @@ class Game {
 
 	  player.cameras = { front, back }; 
     game.activeCamera = player.cameras.back;
+    game.cameraFade = 1;
+
+    // var player2 = this.player2;
+    
+    // front2.position.set(300, 100, 1000);
+    // front2.parent = player2.model;
+	    
+    // back2.position.set(0, 500, -800);
+    // back2.parent = player2.model;
+
+	  // player2.cameras = { front2, back2 }; 
+    // game.activeCamera2 = player2.cameras.back;
     game.cameraFade = 1;
 
   }
@@ -414,11 +425,14 @@ class Game {
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
-    this.renderer2.setSize(window.innerWidth / 2, window.innerHeight);
+    //this.renderer2.setSize(window.innerWidth / 2, window.innerHeight);
   }
 
   set action(name) {
-    if (this.player.action == name) return;
+
+    if (this.player.action == name || !this.player.mixer) {
+      return;
+    }
     const anim = this.player[name];
     const action = this.player.mixer.clipAction(anim, this.player.root);
     this.player.mixer.stopAllAction();
@@ -550,7 +564,6 @@ class Game {
       shouldBulletStop = function(intersect) {
         return intersect.length > 0 && intersect[0].distance < distance;
       },
-      enemy = game.enemy,
       cameras = player.cameras;
       
     requestAnimationFrame(() => { game.animate(); });
@@ -584,12 +597,12 @@ class Game {
         }
 
         // Check if the enemy is hit
-        intersect = raycaster.intersectObject(game.enemy.children[2]);
-        if(shouldBulletStop(intersect)) {
-          stopTheBullet(bullet);
-          enemy.hp -= 10;
-          document.getElementById('hp-bar-points').style.width = enemy.hp + '%';
-        }
+        // intersect = raycaster.intersectObject(game.enemy.children[2]);
+        // if(shouldBulletStop(intersect)) {
+        //   stopTheBullet(bullet);
+        //   enemy.hp -= 10;
+        //   document.getElementById('hp-bar-points').style.width = enemy.hp + '%';
+        // }
 
         bullet.position.add(bullet.velocity);
         if(velocity.x !== 0 || velocity.y  !== 0 || velocity.z  !== 0 ) {
@@ -621,7 +634,7 @@ class Game {
       if (player.move.forward != 0) {
         game.movePlayer(dt);
       }
-      player.model.rotationY += player.move.turn * dt;
+      player.model.rotationY =  (player.model.rotationY || 0) + player.move.turn * dt;
       player.model.rotateY(player.move.turn * dt);
     }
 
@@ -639,17 +652,19 @@ class Game {
       game.camera.lookAt(pos);
     }
 
-    this.renderer.render(this.scene, this.camera);
-    this.renderer2.render(this.scene, this.camera);
+    game.renderer.render(game.scene, game.camera);
+    //game.renderer2.render(game.scene, game.camera2);
 
-    if (this.stats != undefined) this.stats.update();
+    if (game.stats != undefined) {
+      game.stats.update();
+    }
   }
 
   // Utils function 
   // TODO: move it
   onError(error) {
     const msg = console.error(JSON.stringify(error));
-    console.error(error.message);
+    console.error(error);
   }
 }
 
