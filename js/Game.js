@@ -33,6 +33,8 @@ class Game {
     this.mute = false;
     this.collect = [];
 
+    this.models = {}; // reusable models
+
     this.messages = {
       text: [
         'Welcome to Bulbasaur duel!',
@@ -146,11 +148,6 @@ class Game {
     this.player.cameras.active = object;
   }
 
-  // set activeCamera2(object) {
-  //   this.player2.cameras.active = object;
-  // }
-
-
 
   init() {
     const col = 0xbaecfd,
@@ -159,15 +156,12 @@ class Game {
 
     var light, 
       scene,
-      player = game.player,
-      renderer,
-      renderer2;
+      player = game.player;
 
     game.mode = game.modes.INITIALISING;
 
-    game.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
-    game.camera2 = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
-
+    player.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
+    
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
     //this.scene.fog = new THREE.Fog(col, 500, 1500);
@@ -230,7 +224,7 @@ class Game {
         game
       });
 
-      game.createCameras();
+      player.createCameras();
       game.loadEnvironment(loader);
     }, null, game.onError);
 
@@ -241,26 +235,10 @@ class Game {
       leaf.scale.set(0.12, 0.12, 0.24);
       enableShadow.call(leaf);
 
-      player.razorLeaf = leaf;
+      game.models.razorLeaf = leaf;
     }, null, game.onError);
 
-    renderer = game.renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth / 2, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-    renderer.shadowMapDebug = true;
-    game.container.appendChild(renderer.domElement);
-
-    // TODO: refactor (code repetition)
-    // renderer2 = game.renderer2 = new THREE.WebGLRenderer({ antialias: true });
-    // renderer2.setPixelRatio(window.devicePixelRatio);
-    // renderer2.setSize(window.innerWidth / 2, window.innerHeight);
-    // renderer2.shadowMap.enabled = true;
-    // renderer2.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-    // renderer2.shadowMapDebug = true;
-    // game.container2.appendChild(renderer2.domElement);
-
+    player.renderView();
 
     window.addEventListener('resize', () => { game.onWindowResize(); }, false);
 
@@ -316,47 +294,12 @@ class Game {
     }
   }
 
-  // TODO: remove code repetitions
-  createCameras() {
-    const front = new THREE.Object3D(),
-      back = new THREE.Object3D(),
-      front2 = new THREE.Object3D(),
-      back2 = new THREE.Object3D();
-
-    var player = this.player;
-    
-    front.position.set(300, 100, 1000);
-    front.parent = player.model;
-	    
-    back.position.set(0, 500, -800);
-    back.parent = player.model;
-
-	  player.cameras = { front, back }; 
-    game.activeCamera = player.cameras.back;
-    game.cameraFade = 1;
-
-    // var player2 = this.player2;
-    
-    // front2.position.set(300, 100, 1000);
-    // front2.parent = player2.model;
-	    
-    // back2.position.set(0, 500, -800);
-    // back2.parent = player2.model;
-
-	  // player2.cameras = { front2, back2 }; 
-    // game.activeCamera2 = player2.cameras.back;
-    game.cameraFade = 1;
-
-  }
-
-  // TODO: continue here
 
   loadNextAnim(loader) {
-    const anim = this.anims.pop();
     const game = this;
       delete game.anims;
       game.action = 'idle';
-      game.initPlayerPosition();
+      game.player.initPosition();
       game.mode = game.modes.ACTIVE;
       const overlay = document.getElementById('overlay');
         overlay.classList.add('fade-in');
@@ -364,20 +307,6 @@ class Game {
         evt.target.style.display = 'none';
       }, false);
 
-  }
-
-  initPlayerPosition() {
-    // cast down
-    const dir = new THREE.Vector3(0, -1, 0);
-    const pos = this.player.model.position.clone();
-    pos.y += 200;
-    const raycaster = new THREE.Raycaster(pos, dir);
-    const box = this.environmentProxy;
-
-    const intersect = raycaster.intersectObject(box);
-    if (intersect.length > 0) {
-      this.player.model.position.y = pos.y - intersect[0].distance;
-    }
   }
 
   getMousePosition(clientX, clientY) {
@@ -421,8 +350,8 @@ class Game {
 	 }
 
   onWindowResize() {
-    this.camera.aspect = window.innerWidth / 2 / window.innerHeight;
-    this.camera.updateProjectionMatrix();
+    this.player.camera.aspect = window.innerWidth / 2 / window.innerHeight;
+    this.player.camera.updateProjectionMatrix();
 
     this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
     //this.renderer2.setSize(window.innerWidth / 2, window.innerHeight);
@@ -640,19 +569,19 @@ class Game {
 
     // Camera handling
     if (cameras != undefined && cameras.active != undefined) {
-      game.camera.position.lerp(cameras.active.getWorldPosition(new THREE.Vector3()), game.cameraFade);
+      game.player.camera.position.lerp(cameras.active.getWorldPosition(new THREE.Vector3()), game.player.cameraFade);
       let pos;
-      if (game.cameraTarget != undefined) {
-        game.camera.position.copy(game.cameraTarget.position);
-        pos = game.cameraTarget.target;
+      if (game.player.cameraTarget != undefined) {
+        game.player.camera.position.copy(game.player.cameraTarget.position);
+        pos = game.player.cameraTarget.target;
       } else {
         pos = player.model.position.clone();
         pos.y += 60;
       }
-      game.camera.lookAt(pos);
+      game.player.camera.lookAt(pos);
     }
 
-    game.renderer.render(game.scene, game.camera);
+    game.player.renderer.render(game.scene, game.player.camera);
     //game.renderer2.render(game.scene, game.camera2);
 
     if (game.stats != undefined) {
@@ -660,7 +589,7 @@ class Game {
     }
   }
 
-  // Utils function 
+  // Util function 
   // TODO: move it
   onError(error) {
     const msg = console.error(JSON.stringify(error));

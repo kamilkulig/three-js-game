@@ -46,7 +46,7 @@ class JoyStick {
               //  new THREE.MeshBasicMaterial({color: 0xffff00})
               //),
   
-              var bullet = game.player.razorLeaf.clone(),
+              var bullet = game.models.razorLeaf.clone(),
               scene = game.scene, 
               position = game.player.model.position,
               rY;
