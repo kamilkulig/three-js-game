@@ -36,8 +36,8 @@ class JoyStick {
             case 'ArrowLeft': joystick.turn = -1; break;
             case 'ArrowRight': joystick.turn = 1; break;
             case 'Space': 
-              if(game.action !== 'jump') {
-                game.action = 'jump';
+              if(game.player.action !== 'jump') {
+                game.player.setAction('jump');
               }
               break;
             case 'KeyF': // TODO: move it to a separate function
@@ -112,7 +112,7 @@ class JoyStick {
   
     moveByKeyboard() {
       if (this.onMove != undefined) {
-        this.onMove.call(this.game, this.forward, this.turn);
+        this.onMove.call(this.game.player, this.forward, this.turn);
       }
     }
   
@@ -141,7 +141,7 @@ class JoyStick {
       const forward = -(top - this.origin.top + this.domElement.clientHeight / 2) / this.maxRadius;
       const turn = (left - this.origin.left + this.domElement.clientWidth / 2) / this.maxRadius;
   
-      if (this.onMove != undefined) this.onMove.call(this.game, forward, turn);
+      if (this.onMove != undefined) this.onMove.call(this.game.player, forward, turn);
     }
   
     up(evt) {
@@ -155,7 +155,7 @@ class JoyStick {
       this.domElement.style.top = `${this.origin.top}px`;
       this.domElement.style.left = `${this.origin.left}px`;
   
-      this.onMove.call(this.game, 0, 0);
+      this.onMove.call(this.game.player, 0, 0);
     }
   }
   

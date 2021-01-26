@@ -1,5 +1,6 @@
 class Player {
     constructor(game, initialPos) {
+        this.action;
         this.cameras;
         this.activeCamera;
         this.initialPos = initialPos;
@@ -8,7 +9,7 @@ class Player {
         this.controls;
         this.renderer;
         this.game = game;
-        this.cameraFade;
+        this.cameraFade = 1;
         this.scene;
         this.renderer;
     }
@@ -25,13 +26,42 @@ class Player {
         this.root = this.mixer.getRoot();
 
         this.mixer.addEventListener('finished', (e) => {
-            this.game.action = 'idle';
+            this.setAction('idle');
         });
 
         this.model.position.set(initialPos.x, initialPos.y, initialPos.z);
         this.game.scene.add(model);
 
         this.createCameras();
+    }
+
+    setAction(name) {
+
+      if (this.action == name || !this.mixer) {
+        return;
+      }
+
+      const anim = this[name];
+      const action = this.mixer.clipAction(anim, this.root);
+      this.mixer.stopAllAction();
+      this.action = name;
+  
+      switch(name) {
+        case 'walk':
+          action.timeScale = (this.move != undefined && this.move.forward < 0) ? -0.3 : 1;
+          break;
+        case 'idle':
+          action.timeScale = 0.5;
+          break;
+      }
+  
+      action.time = 0;
+      action.fadeIn(0.5);
+      if (name == 'jump') {
+        action.loop = THREE.LoopOnce;
+      }
+      action.play();
+      this.actionTime = Date.now();
     }
 
     createCameras() {
@@ -73,5 +103,142 @@ class Player {
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
         renderer.shadowMapDebug = true;
         this.game.container.appendChild(renderer.domElement);
+    }
+
+    control(forward, turn) {
+        // console.log(`playerControl(${forward}), ${turn}`);
+        turn = -turn;
+    
+        if (forward == 0 && turn == 0) {
+          delete this.move;
+        } else {
+          this.move = { forward, turn };
+        }
+    
+        if (forward > 0) {
+          if (
+            this.action != 'jump' && 
+            this.action != 'walk' &&
+            this.action != 'run'
+          ) {
+            this.setAction('walk');
+          }  
+        } else if (forward < -0.2) {
+          if (this.action != 'walk') {
+            this.setAction('walk');
+          } 
+        } else if (this.action == 'walk' || this.action == 'run') { 
+          this.setAction('idle');
+        }
+      }
+    
+
+    switchCamera(fade = 0.05) {
+        const cams = Object.keys(this.cameras);
+        cams.splice(cams.indexOf('active'), 1);
+        let index;
+        for (const prop in this.cameras) {
+          if (this.cameras[prop] == this.cameras.active) {
+            index = cams.indexOf(prop) + 1;
+            if (index >= cams.length) index = 0;
+            this.cameras.active = this.cameras[cams[index]];
+            break;
+          }
+        }
+        this.cameraFade = fade;
+    }
+
+    // TODO: do we really need this?
+    set activeCamera(object) {
+        this.cameras.active = object;
+    }
+    
+
+    // TODO: change to "move" (naming conflict: there's a property with the same name)
+    moveModel(dt) { 
+        const pos = this.model.position.clone();
+        pos.y += 60;
+        const dir = new THREE.Vector3();
+        this.model.getWorldDirection(dir);
+        if (this.move.forward < 0) dir.negate();
+        let raycaster = new THREE.Raycaster(pos, dir);
+        let blocked = false;
+        const box = this.game.environmentProxy;
+
+        if (box != undefined) {
+        const intersect = raycaster.intersectObject(box);
+        if (intersect.length > 0) {
+            if (intersect[0].distance < 50) blocked = true;
+        }
+        }
+
+        if (!blocked) {
+        if (this.move.forward > 0) {
+            var speed;
+            switch (this.action) {
+            case 'run':
+                speed = 200;
+                break;
+            case 'jump':
+                speed = 350;
+                break;
+            default:
+                speed = 100;
+            }
+            
+            this.model.translateZ(dt * speed);
+        } else {
+            this.model.translateZ(-dt * 30);
+        }
+        }
+
+        if (box != undefined) {
+        // cast left
+        dir.set(-1, 0, 0);
+        dir.applyMatrix4(this.model.matrix);
+        dir.normalize();
+        raycaster = new THREE.Raycaster(pos, dir);
+
+        let intersect = raycaster.intersectObject(box);
+        if (intersect.length > 0) {
+            if (intersect[0].distance < 50) this.model.translateX(50 - intersect[0].distance);
+        }
+
+        // cast right
+        dir.set(1, 0, 0);
+        dir.applyMatrix4(this.model.matrix);
+        dir.normalize();
+        raycaster = new THREE.Raycaster(pos, dir);
+
+        intersect = raycaster.intersectObject(box);
+        if (intersect.length > 0) {
+            if (intersect[0].distance < 50) this.model.translateX(intersect[0].distance - 50);
+        }
+
+        // cast down
+        dir.set(0, -1, 0);
+        pos.y += 200;
+        raycaster = new THREE.Raycaster(pos, dir);
+        const gravity = 30;
+
+        intersect = raycaster.intersectObject(box);
+        if (intersect.length > 0) {
+            const targetY = pos.y - intersect[0].distance;
+            if (targetY > this.model.position.y) {
+            // Going up
+            this.model.position.y = 0.8 * this.model.position.y + 0.2 * targetY;
+            this.velocityY = 0;
+            } else if (targetY < this.model.position.y) {
+            // Falling
+            if (this.velocityY == undefined) this.velocityY = 0;
+            this.velocityY += dt * gravity;
+            this.model.position.y -= this.velocityY;
+            if (this.model.position.y < targetY) {
+                this.velocityY = 0;
+                this.model.position.y = targetY;
+            }
+            }
+        }
+        }
     }
 }

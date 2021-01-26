@@ -14,14 +14,9 @@ class Game {
 
     this.container;
     this.player = new Player(this, {x: 0, y: 0, z:0});
-    //this.player2 = { };
     this.stats;
     this.controls;
-    this.camera;
-    //this.camera2;
     this.scene;
-    this.renderer;
-    //this.renderer2;
     this.cellSize = 16;
     this.interactive = false;
     this.levelIndex = 0;
@@ -53,15 +48,10 @@ class Game {
     this.container.style.float = 'left';
     document.body.appendChild(this.container);
 
-    this.container2 = document.createElement('div');
-    this.container2.style.height = '100%';
-    this.container2.style.left = '50%';
-    document.body.appendChild(this.container2);
 
     const sfxExt = SFX.supportsAudioType('mp3') ? 'mp3' : 'ogg';
     const game = this;
-    this.anims = []; // ['ascend-stairs', 'gather-objects', 'look-around', 'push-button'];
-    this.tweens = [];
+    this.anims = []; // TODO: do we need this?
 
     this.assetsPath = '../assets/';
 
@@ -79,7 +69,7 @@ class Game {
 
     this.mode = this.modes.PRELOAD;
 
-    document.getElementById('camera-btn').onclick = function () { game.switchCamera(); };
+    document.getElementById('camera-btn').onclick = function () { game.player.switchCamera(); };
     document.getElementById('sfx-btn').onclick = function () { game.toggleSound(); };
 
     this.actionBtn = document.getElementById('action-btn');
@@ -106,30 +96,6 @@ class Game {
     }
   }
 
-  contextAction() {
-    console.log(`contextAction called ${JSON.stringify(this.onAction)}`);
-    if (this.onAction !== undefined) {
-      if (this.onAction.action != undefined) {
-        this.action = this.onAction.action;
-      }
-    }
-  }
-
-  switchCamera(fade = 0.05) {
-    const cams = Object.keys(this.player.cameras);
-    cams.splice(cams.indexOf('active'), 1);
-    let index;
-    for (const prop in this.player.cameras) {
-      if (this.player.cameras[prop] == this.player.cameras.active) {
-        index = cams.indexOf(prop) + 1;
-        if (index >= cams.length) index = 0;
-        this.player.cameras.active = this.player.cameras[cams[index]];
-        break;
-      }
-    }
-    this.cameraFade = fade;
-  }
-
   initSfx() {
     this.sfx = {};
     this.sfx.context = new (window.AudioContext || window.webkitAudioContext)();
@@ -142,10 +108,6 @@ class Game {
         volume: 0.3,
       });
     });
-  }
-
-  set activeCamera(object) {
-    this.player.cameras.active = object;
   }
 
 
@@ -211,16 +173,8 @@ class Game {
       // Players
       player1.initModel(THREE.SkeletonUtils.clone(model), anims);
 
-
-      // Enemy model for debugging purposes
-      // enemy = game.enemy = THREE.SkeletonUtils.clone(model);
-      // enemy.position.set(0, -20, 300);
-      // enemy.rotateY(Math.PI);
-      // enemy.hp = 100;
-      // scene.add(enemy);
-
       game.joystick = new JoyStick({
-        onMove: game.playerControl,
+        onMove: game.player.control,
         game
       });
 
@@ -263,42 +217,9 @@ class Game {
      
       // mock the proxy with the original environment
       game.environmentProxy = model.children[1]; // TODO: remove camera from mesh
-      game.loadNextAnim(loader);
-    }, null, game.onError);
-  }
-
-  playerControl(forward, turn) {
-    // console.log(`playerControl(${forward}), ${turn}`);
-    turn = -turn;
-
-    if (forward == 0 && turn == 0) {
-      delete this.player.move;
-    } else {
-      this.player.move = { forward, turn };
-    }
-
-    if (forward > 0) {
-      if (
-        this.player.action != 'jump' && 
-        this.player.action != 'walk' &&
-        this.player.action != 'run'
-      ) {
-        this.action = 'walk';
-      }  
-    } else if (forward < -0.2) {
-      if (this.player.action != 'walk') {
-        this.action = 'walk';
-      } 
-    } else if (this.player.action == 'walk' || this.player.action == 'run') { 
-      this.action = 'idle';
-    }
-  }
-
-
-  loadNextAnim(loader) {
-    const game = this;
-      delete game.anims;
-      game.action = 'idle';
+      
+      delete game.anims; // TODO: do we really need this?
+      game.player.setAction('idle');
       game.player.initPosition();
       game.mode = game.modes.ACTIVE;
       const overlay = document.getElementById('overlay');
@@ -307,6 +228,7 @@ class Game {
         evt.target.style.display = 'none';
       }, false);
 
+    }, null, game.onError);
   }
 
   getMousePosition(clientX, clientY) {
@@ -353,123 +275,7 @@ class Game {
     this.player.camera.aspect = window.innerWidth / 2 / window.innerHeight;
     this.player.camera.updateProjectionMatrix();
 
-    this.renderer.setSize(window.innerWidth / 2, window.innerHeight);
-    //this.renderer2.setSize(window.innerWidth / 2, window.innerHeight);
-  }
-
-  set action(name) {
-
-    if (this.player.action == name || !this.player.mixer) {
-      return;
-    }
-    const anim = this.player[name];
-    const action = this.player.mixer.clipAction(anim, this.player.root);
-    this.player.mixer.stopAllAction();
-    this.player.action = name;
-
-    switch(name) {
-      case 'walk':
-        action.timeScale = (this.player.move != undefined && this.player.move.forward < 0) ? -0.3 : 1;
-        break;
-      case 'idle':
-        action.timeScale = 0.5;
-        break;
-    }
-
-    action.time = 0;
-    action.fadeIn(0.5);
-    if (name == 'jump') {
-      action.loop = THREE.LoopOnce;
-    }
-    action.play();
-    this.player.actionTime = Date.now();
-  }
-
-  movePlayer(dt) {
-    const pos = this.player.model.position.clone();
-    pos.y += 60;
-    const dir = new THREE.Vector3();
-    this.player.model.getWorldDirection(dir);
-    if (this.player.move.forward < 0) dir.negate();
-    let raycaster = new THREE.Raycaster(pos, dir);
-    let blocked = false;
-    const box = this.environmentProxy;
-
-    if (this.environmentProxy != undefined) {
-      const intersect = raycaster.intersectObject(box);
-      if (intersect.length > 0) {
-        if (intersect[0].distance < 50) blocked = true;
-      }
-    }
-
-    if (!blocked) {
-      if (this.player.move.forward > 0) {
-        var speed;
-        switch (this.player.action) {
-          case 'run':
-            speed = 200;
-            break;
-          case 'jump':
-            speed = 350;
-            break;
-          default:
-            speed = 100;
-        }
-        
-        this.player.model.translateZ(dt * speed);
-      } else {
-        this.player.model.translateZ(-dt * 30);
-      }
-    }
-
-    if (this.environmentProxy != undefined) {
-      // cast left
-      dir.set(-1, 0, 0);
-      dir.applyMatrix4(this.player.model.matrix);
-      dir.normalize();
-      raycaster = new THREE.Raycaster(pos, dir);
-
-      let intersect = raycaster.intersectObject(box);
-      if (intersect.length > 0) {
-        if (intersect[0].distance < 50) this.player.model.translateX(50 - intersect[0].distance);
-      }
-
-      // cast right
-      dir.set(1, 0, 0);
-      dir.applyMatrix4(this.player.model.matrix);
-      dir.normalize();
-      raycaster = new THREE.Raycaster(pos, dir);
-
-      intersect = raycaster.intersectObject(box);
-      if (intersect.length > 0) {
-        if (intersect[0].distance < 50) this.player.model.translateX(intersect[0].distance - 50);
-      }
-
-      // cast down
-      dir.set(0, -1, 0);
-      pos.y += 200;
-      raycaster = new THREE.Raycaster(pos, dir);
-      const gravity = 30;
-
-      intersect = raycaster.intersectObject(box);
-      if (intersect.length > 0) {
-        const targetY = pos.y - intersect[0].distance;
-        if (targetY > this.player.model.position.y) {
-          // Going up
-          this.player.model.position.y = 0.8 * this.player.model.position.y + 0.2 * targetY;
-          this.player.velocityY = 0;
-        } else if (targetY < this.player.model.position.y) {
-          // Falling
-          if (this.player.velocityY == undefined) this.player.velocityY = 0;
-          this.player.velocityY += dt * gravity;
-          this.player.model.position.y -= this.player.velocityY;
-          if (this.player.model.position.y < targetY) {
-            this.player.velocityY = 0;
-            this.player.model.position.y = targetY;
-          }
-        }
-      }
-    }
+    this.player.renderer.setSize(window.innerWidth / 2, window.innerHeight);
   }
 
   animate() {
@@ -554,14 +360,14 @@ class Game {
         &&
         player.move?.forward > 0
       ) {
-        game.action = 'run';
+        game.player.setAction('run');
       }
     }
 
     // Turning
     if (player.move != undefined) {
       if (player.move.forward != 0) {
-        game.movePlayer(dt);
+        game.player.moveModel(dt);
       }
       player.model.rotationY =  (player.model.rotationY || 0) + player.move.turn * dt;
       player.model.rotateY(player.move.turn * dt);
