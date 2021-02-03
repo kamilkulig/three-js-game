@@ -1,5 +1,5 @@
 class Player {
-    constructor(game, initialPos) {
+    constructor(game, initialPos, keyboardMapping) {
         this.action;
         this.cameras;
         this.activeCamera;
@@ -12,6 +12,11 @@ class Player {
         this.cameraFade = 1;
         this.scene;
         this.renderer;
+        this.keyboardMapping = keyboardMapping;
+        this.move = {
+          forward: 0,
+          turn: 0
+        }
     }
 
     initModel(model, anims) {
@@ -103,17 +108,18 @@ class Player {
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
         renderer.shadowMapDebug = true;
         this.game.container.appendChild(renderer.domElement);
+        renderer.domElement.style.float = 'left';
     }
 
-    control(forward, turn) {
+    initAction() {
+        var forward = this.move.forward;
         // console.log(`playerControl(${forward}), ${turn}`);
-        turn = -turn;
     
-        if (forward == 0 && turn == 0) {
-          delete this.move;
-        } else {
-          this.move = { forward, turn };
-        }
+        // if (forward == 0 && turn == 0) {
+        //   delete this.move;
+        // } else {
+        //   this.move = { forward, turn };
+        // }
     
         if (forward > 0) {
           if (
@@ -156,6 +162,7 @@ class Player {
 
     // TODO: change to "move" (naming conflict: there's a property with the same name)
     moveModel(dt) { 
+        this.initAction();
         const pos = this.model.position.clone();
         pos.y += 60;
         const dir = new THREE.Vector3();

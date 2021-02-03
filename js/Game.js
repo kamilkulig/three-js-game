@@ -13,7 +13,32 @@ class Game {
     this.mode = this.modes.NONE;
 
     this.container;
-    this.player = new Player(this, {x: 0, y: 0, z:0});
+    this.player = new Player(
+      this, 
+      {x: 0, y: 0, z: 0},
+      {
+        'Space': 'jump',
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right', 
+        'ArrowUp': 'forward',
+        'ArrowDown': 'backward',
+        'KeyF': 'razorLeaf'
+      }
+    );
+
+    this.player2 = new Player(
+      this, 
+      {x: 0, y: 0, z: 300},
+      {
+        'KeyC': 'jump',
+        'KeyA': 'left',
+        'KeyD': 'right', 
+        'KeyW': 'forward',
+        'KeyS': 'backward',
+        'KeyX': 'razorLeaf'
+      }
+    );
+    
     this.stats;
     this.controls;
     this.scene;
@@ -118,12 +143,16 @@ class Game {
 
     var light, 
       scene,
-      player = game.player;
+      player = game.player,
+      player2 = game.player2;
 
     game.mode = game.modes.INITIALISING;
 
+    // TODO: move it to Player class
     player.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
-    
+    player2.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
+
+
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
     //this.scene.fog = new THREE.Fog(col, 500, 1500);
@@ -153,6 +182,7 @@ class Game {
         FPS = 24;
       
       var player1 = game.player,
+        player2 = game.player2,
         animations = model.animations[3],
         subclip = THREE.AnimationUtils.subclip,
         anims = {};
@@ -172,13 +202,15 @@ class Game {
 
       // Players
       player1.initModel(THREE.SkeletonUtils.clone(model), anims);
+      player2.initModel(THREE.SkeletonUtils.clone(model), anims);
 
-      game.joystick = new JoyStick({
-        onMove: game.player.control,
+
+      game.keyboard = new Keyboard({
         game
       });
 
-      player.createCameras();
+      player1.createCameras();
+      player2.createCameras();
       game.loadEnvironment(loader);
     }, null, game.onError);
 
@@ -193,6 +225,7 @@ class Game {
     }, null, game.onError);
 
     player.renderView();
+    player2.renderView();
 
     window.addEventListener('resize', () => { game.onWindowResize(); }, false);
 
@@ -221,6 +254,8 @@ class Game {
       delete game.anims; // TODO: do we really need this?
       game.player.setAction('idle');
       game.player.initPosition();
+      game.player2.setAction('idle');
+      game.player2.initPosition();
       game.mode = game.modes.ACTIVE;
       const overlay = document.getElementById('overlay');
         overlay.classList.add('fade-in');
@@ -276,16 +311,20 @@ class Game {
     this.player.camera.updateProjectionMatrix();
 
     this.player.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+
+    this.player2.camera.aspect = window.innerWidth / 2 / window.innerHeight;
+    this.player2.camera.updateProjectionMatrix();
+
+    this.player2.renderer.setSize(window.innerWidth / 2, window.innerHeight);
   }
 
   animate() {
+    
     const game = this,
       dt = game.clock.getDelta(),
-      distance = 20,
-      player = game.player;
+      distance = 20;
 
-    var bullets = game.player.bullets,
-      bullet,
+    var bullet,
       velocity,
       dir,
       pos,
@@ -298,98 +337,105 @@ class Game {
       },
       shouldBulletStop = function(intersect) {
         return intersect.length > 0 && intersect[0].distance < distance;
-      },
-      cameras = player.cameras;
+      };
       
     requestAnimationFrame(() => { game.animate(); });
 
-    // Handle bullets
-    if(bullets) {
-      for(var i = bullets.length - 1; i >= 0; i--) {
-        var bullet = bullets[i],
-          velocity = bullet.velocity;
+    [game.player, game.player2].forEach((player) => {
+      var bullets = player.bullets,
+        cameras = player.cameras;
 
-        if(!bullet.alive) {
-          bullets.splice(i, 1);
-          continue;
+  
+      // Handle bullets
+      if(bullets) {
+        for(var i = bullets.length - 1; i >= 0; i--) {
+          var bullet = bullets[i],
+            velocity = bullet.velocity;
+
+          if(!bullet.alive) {
+            bullets.splice(i, 1);
+            continue;
+          }
+
+          if(!velocity.x && !velocity.y && !velocity.z) {
+            continue;
+          }
+
+          dir = velocity.clone().normalize();
+          pos = bullet.position.clone();
+          box = game.environmentProxy;
+            
+          // TODO: improve collision detetion mechanism
+          pos.y -= 9; // make sure that the ray touches the leaf
+          raycaster = new THREE.Raycaster(pos, dir);
+
+          intersect = raycaster.intersectObject(box);
+          if(shouldBulletStop(intersect)) {
+            stopTheBullet(bullet);
+          }
+
+          // Check if the enemy is hit
+          // intersect = raycaster.intersectObject(game.enemy.children[2]);
+          // if(shouldBulletStop(intersect)) {
+          //   stopTheBullet(bullet);
+          //   enemy.hp -= 10;
+          //   document.getElementById('hp-bar-points').style.width = enemy.hp + '%';
+          // }
+
+          bullet.position.add(bullet.velocity);
+          if(velocity.x !== 0 || velocity.y  !== 0 || velocity.z  !== 0 ) {
+            bullet.rotateY(30 * dt, 10 * dt, 5 * dt);
+          } 
+
+        }
+      }
+
+      // Update the mixer
+      if (player.mixer != undefined && game.mode == game.modes.ACTIVE) {
+        player.mixer.update(dt);
+      }
+
+      // Perform the transition between jump/walk and run
+      if (player.action == 'walk' || player.action == 'jump') {
+        const elapsedTime = Date.now() - player.actionTime;
+        if (
+          elapsedTime > (player.action == 'walk' ? 1000 : 650) 
+          &&
+          player.move?.forward > 0
+        ) {
+          player.setAction('run');
+        }
+      }
+
+      // Turning
+      if (player.move != undefined) {
+        if (player.move.forward != 0) {
+          player.moveModel(dt);
+        }
+        if(player.model) {
+          player.model.rotationY =  (player.model.rotationY || 0) + player.move.turn * dt;
+          player.model.rotateY(player.move.turn * dt);
         }
 
-        if(!velocity.x && !velocity.y && !velocity.z) {
-          continue;
+      }
+
+      // Camera handling
+      if (cameras != undefined && cameras.active != undefined) {
+        player.camera.position.lerp(cameras.active.getWorldPosition(new THREE.Vector3()), player.cameraFade);
+        let pos;
+        if (player.cameraTarget != undefined) {
+          player.camera.position.copy(player.cameraTarget.position);
+          pos = player.cameraTarget.target;
+        } else {
+          pos = player.model.position.clone();
+          pos.y += 60;
         }
-
-        dir = velocity.clone().normalize();
-        pos = bullet.position.clone();
-        box = game.environmentProxy;
-          
-        // TODO: improve collision detetion mechanism
-        pos.y -= 9; // make sure that the ray touches the leaf
-        raycaster = new THREE.Raycaster(pos, dir);
-
-        intersect = raycaster.intersectObject(box);
-        if(shouldBulletStop(intersect)) {
-          stopTheBullet(bullet);
-        }
-
-        // Check if the enemy is hit
-        // intersect = raycaster.intersectObject(game.enemy.children[2]);
-        // if(shouldBulletStop(intersect)) {
-        //   stopTheBullet(bullet);
-        //   enemy.hp -= 10;
-        //   document.getElementById('hp-bar-points').style.width = enemy.hp + '%';
-        // }
-
-        bullet.position.add(bullet.velocity);
-        if(velocity.x !== 0 || velocity.y  !== 0 || velocity.z  !== 0 ) {
-          bullet.rotateY(30 * dt, 10 * dt, 5 * dt);
-        } 
-
+        player.camera.lookAt(pos);
       }
-    }
 
-    // Update the mixer
-    if (player.mixer != undefined && game.mode == game.modes.ACTIVE) {
-      player.mixer.update(dt);
-    }
+      player.renderer.render(game.scene, player.camera);
 
-    // Perform the transition between jump/walk and run
-    if (player.action == 'walk' || player.action == 'jump') {
-      const elapsedTime = Date.now() - player.actionTime;
-      if (
-        elapsedTime > (player.action == 'walk' ? 1000 : 650) 
-        &&
-        player.move?.forward > 0
-      ) {
-        game.player.setAction('run');
-      }
-    }
-
-    // Turning
-    if (player.move != undefined) {
-      if (player.move.forward != 0) {
-        game.player.moveModel(dt);
-      }
-      player.model.rotationY =  (player.model.rotationY || 0) + player.move.turn * dt;
-      player.model.rotateY(player.move.turn * dt);
-    }
-
-    // Camera handling
-    if (cameras != undefined && cameras.active != undefined) {
-      game.player.camera.position.lerp(cameras.active.getWorldPosition(new THREE.Vector3()), game.player.cameraFade);
-      let pos;
-      if (game.player.cameraTarget != undefined) {
-        game.player.camera.position.copy(game.player.cameraTarget.position);
-        pos = game.player.cameraTarget.target;
-      } else {
-        pos = player.model.position.clone();
-        pos.y += 60;
-      }
-      game.player.camera.lookAt(pos);
-    }
-
-    game.player.renderer.render(game.scene, game.player.camera);
-    //game.renderer2.render(game.scene, game.camera2);
-
+    });
     if (game.stats != undefined) {
       game.stats.update();
     }
