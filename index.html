@@ -25,25 +25,23 @@
 				margin: 0px;
 				overflow: hidden;
 			}
-			#message{
+			
+			#game-over-message {
 				position:absolute;
 				left: 50%;
 				top: 50%;
 				transform: translateX(-50%) translateY(-50%);
-				font-family: 'Kavivanar', san-serif;
-				font-size: 40px;
+				font-family: 'Arial';
+				font-size: 20px;
 				width:80%;
 				max-width:280px;
-				padding: 15px 15px 50px 15px;
+				padding: auto;
 				text-align: center;
-				display:none;
 				align-content: center;
-				justify-content: center;
-				background-color: aliceblue;
-				border: medium solid #3D455C;
-				border-radius: 20px;
-				color: #3D455C;
+				background-color: rgba(0, 0, 0, 0.6);
+				color: #fff;
 				z-index: 99;
+				display: none;
 			}
 			#message_ok{
 				position: absolute;
@@ -57,12 +55,11 @@
 				border: medium solid #696882;
 			}
 
-			#hp-bar-border{
-				position: absolute;
-				transform: translate(-50%, -50%);
-				left: 50%;
+			.hp-bar-border{
 				top: 15px;
-				width: 200px;
+				width: 50%;
+				position: absolute;
+				left: 25%;
 				height: 10px;
 				border: 1px black solid;
 				background: transparent;
@@ -71,7 +68,7 @@
 			}
 
 			
-			#hp-bar-points{
+			.hp-bar-points{
 				border: 0;
 				width: 100%;
 				height: 100%;
@@ -185,14 +182,14 @@
 	</head>
 
 	<body>
-		<div id="message">
-			<p id="message_text"></p>
-			<button id="message_ok">OK</button>
+		<div id="game-over-message">
+			<p id="game-over-text">Game over!<br/>Reload the page to play again.</p>
 		</div>
+
 		<div id="overlay"></div>
         <button id="sfx-btn"><i class="fas fa-volume-up"></i></button>
 		<button id="camera-btn"><i class="fas fa-camera"></i></button>
-		<div id="hp-bar-border"><div id="hp-bar-points"></div></div>
+		<!-- <div id="hp-bar-border"><div id="hp-bar-points"></div></div> -->
 		<!-- <button id="briefcase-btn"><i class="fas fa-briefcase"></i></button> -->
         <!-- <div id="briefcase">
             <ul>

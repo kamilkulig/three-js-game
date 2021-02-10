@@ -1,10 +1,11 @@
 class Player {
-    constructor(game, initialPos, keyboardMapping) {
+    constructor(game, initialPos, keyboardMapping, name) {
         this.action;
         this.cameras;
         this.activeCamera;
         this.initialPos = initialPos;
         this.bullets = [];
+        this.name = name;
         this.container;
         this.controls;
         this.renderer;
@@ -12,6 +13,7 @@ class Player {
         this.cameraFade = 1;
         this.scene;
         this.renderer;
+        this.hp = 100;
         this.keyboardMapping = keyboardMapping;
         this.move = {
           forward: 0,
@@ -28,6 +30,7 @@ class Player {
         this.idle = anims.idle;
         this.run = anims.run;
         this.jump = anims.jump;
+        this.defeated = anims.defeated;
         this.root = this.mixer.getRoot();
 
         this.mixer.addEventListener('finished', (e) => {
@@ -42,7 +45,7 @@ class Player {
 
     setAction(name) {
 
-      if (this.action == name || !this.mixer) {
+      if (this.action == 'defeated' || this.action == name || !this.mixer) {
         return;
       }
 
@@ -58,11 +61,16 @@ class Player {
         case 'idle':
           action.timeScale = 0.5;
           break;
+        case 'defeated':
+          action.timeScale = 0.5;
+          action.clampWhenFinished = true;
+          document.getElementById('game-over-message').style.display = 'block';
+          break;
       }
   
       action.time = 0;
       action.fadeIn(0.5);
-      if (name == 'jump') {
+      if (name == 'jump' || name == 'defeated') {
         action.loop = THREE.LoopOnce;
       }
       action.play();
@@ -107,8 +115,24 @@ class Player {
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
         renderer.shadowMapDebug = true;
-        this.game.container.appendChild(renderer.domElement);
-        renderer.domElement.style.float = 'left';
+
+        var playerContainer = document.createElement('div');
+        
+        this.game.container.appendChild(playerContainer);
+        playerContainer.style.float = 'left';
+        playerContainer.style.position = 'relative';
+        
+
+        var hpBarBorder = document.createElement('div'),
+          hpBarPoints = this.hpBar = document.createElement('div');
+        hpBarBorder.setAttribute('class', 'hp-bar-border');
+        hpBarPoints.setAttribute('class', "hp-bar-points");
+        hpBarBorder.appendChild(hpBarPoints);
+        
+        playerContainer.appendChild(hpBarBorder);
+        playerContainer.appendChild(renderer.domElement);
+        
+        //<div id="hp-bar-border"><div id="hp-bar-points"></div></div>
     }
 
     initAction() {
@@ -120,6 +144,11 @@ class Player {
         // } else {
         //   this.move = { forward, turn };
         // }
+
+        if(this.hp <= 0) {
+          this.setAction('defeated');
+          return;
+        }
     
         if (forward > 0) {
           if (
@@ -162,38 +191,38 @@ class Player {
 
     // TODO: change to "move" (naming conflict: there's a property with the same name)
     moveModel(dt) { 
-        this.initAction();
-        const pos = this.model.position.clone();
-        pos.y += 60;
-        const dir = new THREE.Vector3();
-        this.model.getWorldDirection(dir);
-        if (this.move.forward < 0) dir.negate();
-        let raycaster = new THREE.Raycaster(pos, dir);
-        let blocked = false;
-        const box = this.game.environmentProxy;
+      this.initAction();
+      const pos = this.model.position.clone();
+      pos.y += 60;
+      const dir = new THREE.Vector3();
+      this.model.getWorldDirection(dir);
+      if (this.move.forward < 0) dir.negate();
+      let raycaster = new THREE.Raycaster(pos, dir);
+      let blocked = false;
+      const box = this.game.environmentProxy;
 
-        if (box != undefined) {
-        const intersect = raycaster.intersectObject(box);
-        if (intersect.length > 0) {
-            if (intersect[0].distance < 50) blocked = true;
-        }
-        }
+      if (box != undefined) {
+      const intersect = raycaster.intersectObject(box);
+      if (intersect.length > 0) {
+          if (intersect[0].distance < 50) blocked = true;
+      }
+      }
 
         if (!blocked) {
         if (this.move.forward > 0) {
-            var speed;
-            switch (this.action) {
-            case 'run':
-                speed = 200;
-                break;
-            case 'jump':
-                speed = 350;
-                break;
-            default:
-                speed = 100;
-            }
-            
-            this.model.translateZ(dt * speed);
+          var speed;
+          switch (this.action) {
+          case 'run':
+              speed = 200;
+              break;
+          case 'jump':
+              speed = 250;
+              break;
+          default:
+              speed = 100;
+          }
+          
+          this.model.translateZ(dt * speed);
         } else {
             this.model.translateZ(-dt * 30);
         }

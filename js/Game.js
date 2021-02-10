@@ -18,25 +18,27 @@ class Game {
       {x: 0, y: 0, z: 0},
       {
         'Space': 'jump',
-        'ArrowLeft': 'left',
-        'ArrowRight': 'right', 
-        'ArrowUp': 'forward',
-        'ArrowDown': 'backward',
+        'KeyA': 'left',
+        'KeyD': 'right',
+        'KeyW': 'forward',
+        'KeyS': 'backward',
         'KeyF': 'razorLeaf'
-      }
+      },
+      "Player 1"
     );
 
     this.player2 = new Player(
       this, 
       {x: 0, y: 0, z: 300},
       {
-        'KeyC': 'jump',
-        'KeyA': 'left',
-        'KeyD': 'right', 
-        'KeyW': 'forward',
-        'KeyS': 'backward',
-        'KeyX': 'razorLeaf'
-      }
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right', 
+        'ArrowUp': 'forward',
+        'ArrowDown': 'backward',
+        'ControlRight': 'jump',
+        'Enter': 'razorLeaf'
+      },
+      "Player 2"
     );
     
     this.stats;
@@ -198,6 +200,7 @@ class Game {
       anims.idle = subclip(animations, 'idle', 0, 30, FPS);
       anims.run = subclip(animations, 'run', 92, 105, FPS);
       anims.jump = subclip(animations, 'jump', 125, 145, FPS);
+      anims.defeated = subclip(animations, 'defeated', 175, 182, FPS);
 
 
       // Players
@@ -374,13 +377,18 @@ class Game {
             stopTheBullet(bullet);
           }
 
-          // Check if the enemy is hit
-          // intersect = raycaster.intersectObject(game.enemy.children[2]);
-          // if(shouldBulletStop(intersect)) {
-          //   stopTheBullet(bullet);
-          //   enemy.hp -= 10;
-          //   document.getElementById('hp-bar-points').style.width = enemy.hp + '%';
-          // }
+          // Check if damage is inflicted
+          [game.player, game.player2].forEach((_player) => {
+            if(_player !== player) {
+              intersect = raycaster.intersectObject(_player.model.children[2]);
+              if(shouldBulletStop(intersect)) {
+                stopTheBullet(bullet);
+                _player.hp -= 10;
+                _player.hpBar.style.width = _player.hp + '%';
+              }
+            }
+
+          });
 
           bullet.position.add(bullet.velocity);
           if(velocity.x !== 0 || velocity.y  !== 0 || velocity.z  !== 0 ) {
