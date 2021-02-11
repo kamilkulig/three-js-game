@@ -7,3 +7,8 @@
       }
     });
   }
+
+  function onError(error) {
+    const msg = console.error(JSON.stringify(error));
+    console.error(error);
+  }

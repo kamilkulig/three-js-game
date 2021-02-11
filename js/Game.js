@@ -1,6 +1,13 @@
 class Game {
   constructor() {
-    if (!Detector.webgl) Detector.addGetWebGLMessage();
+    const game = this;
+
+    var sfxExt,
+      options;
+
+    if (!Detector.webgl) {
+      Detector.addGetWebGLMessage();
+    }
 
     this.modes = Object.freeze({
       NONE: Symbol('none'),
@@ -13,7 +20,7 @@ class Game {
     this.mode = this.modes.NONE;
 
     this.container;
-    this.player = new Player(
+    this.players = [new Player(
       this, 
       {x: 0, y: 0, z: 0},
       {
@@ -25,9 +32,7 @@ class Game {
         'KeyF': 'razorLeaf'
       },
       "Player 1"
-    );
-
-    this.player2 = new Player(
+    ), new Player(
       this, 
       {x: 0, y: 0, z: 300},
       {
@@ -39,7 +44,7 @@ class Game {
         'Enter': 'razorLeaf'
       },
       "Player 2"
-    );
+    )];
     
     this.stats;
     this.controls;
@@ -47,8 +52,6 @@ class Game {
     this.cellSize = 16;
     this.interactive = false;
     this.levelIndex = 0;
-    this._hints = 0;
-    this.score = 0;
     this.debug = false;
     this.debugPhysics = false;
     this.cameraFade = 0.05;
@@ -57,32 +60,17 @@ class Game {
 
     this.models = {}; // reusable models
 
-    this.messages = {
-      text: [
-        'Welcome to Bulbasaur duel!',
-        'GOOD LUCK!',
-      ],
-      index: 0,
-    };
-
-    if (localStorage && !this.debug) {
-      // const levelIndex = Number(localStorage.getItem('levelIndex'));
-      // if (levelIndex!=undefined) this.levelIndex = levelIndex;
-    }
-
+    // Main game container
     this.container = document.createElement('div');
     this.container.style.height = '100%';
     this.container.style.float = 'left';
     document.body.appendChild(this.container);
 
-
-    const sfxExt = SFX.supportsAudioType('mp3') ? 'mp3' : 'ogg';
-    const game = this;
-    this.anims = []; // TODO: do we need this?
+    sfxExt = SFX.supportsAudioType('mp3') ? 'mp3' : 'ogg';
 
     this.assetsPath = '../assets/';
 
-    const options = {
+    options = {
       assets: [
         `${this.assetsPath}sfx/i-choose-you.${sfxExt}`
       ],
@@ -92,15 +80,9 @@ class Game {
       },
     };
 
-    this.anims.forEach((anim) => { options.assets.push(`${game.assetsPath}fbx/${anim}.fbx`); });
-
     this.mode = this.modes.PRELOAD;
 
-    document.getElementById('camera-btn').onclick = function () { game.player.switchCamera(); };
     document.getElementById('sfx-btn').onclick = function () { game.toggleSound(); };
-
-    this.actionBtn = document.getElementById('action-btn');
-
     this.clock = new THREE.Clock();
 
     const preloader = new Preloader(options);
@@ -144,16 +126,14 @@ class Game {
       game = this;
 
     var light, 
-      scene,
-      player = game.player,
-      player2 = game.player2;
+      scene;
 
     game.mode = game.modes.INITIALISING;
 
     // TODO: move it to Player class
-    player.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
-    player2.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
-
+    game.players.forEach((player) => {
+      player.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
+    });
 
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
@@ -176,16 +156,13 @@ class Game {
     scene.add(light);
 
 
-    // Load and init the model
-    // TODO: make it another function
+    // Bulbasaur model
     loader.load(`${game.assetsPath}fbx/01-Bulbasaur.fbx`, function (model) {
       
       const SCALE = 0.2,
         FPS = 24;
       
-      var player1 = game.player,
-        player2 = game.player2,
-        animations = model.animations[3],
+      var animations = model.animations[3],
         subclip = THREE.AnimationUtils.subclip,
         anims = {};
 
@@ -204,20 +181,16 @@ class Game {
 
 
       // Players
-      player1.initModel(THREE.SkeletonUtils.clone(model), anims);
-      player2.initModel(THREE.SkeletonUtils.clone(model), anims);
-
-
-      game.keyboard = new Keyboard({
-        game
+      game.players.forEach((player) => {
+        player.initModel(THREE.SkeletonUtils.clone(model), anims);
+        player.createCameras();
+        player.renderView();
       });
 
-      player1.createCameras();
-      player2.createCameras();
-      game.loadEnvironment(loader);
-    }, null, game.onError);
+      game.keyboard = new Keyboard(game);
 
-    // TODO: multiple leafs should be fired at once
+      game.loadEnvironment(loader);
+    }, null, onError);
     
     // Leaf model 
     loader.load( `${game.assetsPath}fbx/leaf.fbx`, function (leaf) {
@@ -225,25 +198,16 @@ class Game {
       enableShadow.call(leaf);
 
       game.models.razorLeaf = leaf;
-    }, null, game.onError);
-
-    player.renderView();
-    player2.renderView();
+    }, null, onError);
 
     window.addEventListener('resize', () => { game.onWindowResize(); }, false);
-
-    // stats
-    // if (game.debug) {
-    //   game.stats = new Stats();
-    //   game.container.appendChild(game.stats.dom);
-    // }
-
     game.initSfx();
   }
 
 
   loadEnvironment(loader) {
     const game = this;
+    var overlay;
 
     // Visible env
     loader.load(`${this.assetsPath}fbx/environment4.fbx`, (model) => {
@@ -254,19 +218,19 @@ class Game {
       // mock the proxy with the original environment
       game.environmentProxy = model.children[1]; // TODO: remove camera from mesh
       
-      delete game.anims; // TODO: do we really need this?
-      game.player.setAction('idle');
-      game.player.initPosition();
-      game.player2.setAction('idle');
-      game.player2.initPosition();
+      game.players.forEach((player) => {
+        player.setAction('idle');
+        player.initPosition();  
+      });
+
       game.mode = game.modes.ACTIVE;
-      const overlay = document.getElementById('overlay');
+      overlay = document.getElementById('overlay');
         overlay.classList.add('fade-in');
       overlay.addEventListener('animationend', (evt) => {
         evt.target.style.display = 'none';
       }, false);
 
-    }, null, game.onError);
+    }, null, onError);
   }
 
   getMousePosition(clientX, clientY) {
@@ -276,49 +240,12 @@ class Game {
     return pos;
   }
 
-  showMessage(msg, fontSize = 20, onOK = null) {
-    const txt = document.getElementById('message_text');
-    txt.innerHTML = msg;
-    txt.style.fontSize = `${fontSize}px`;
-    const btn = document.getElementById('message_ok');
-    const panel = document.getElementById('message');
-    const game = this;
-    if (onOK != null) {
-      btn.onclick = function () {
-        panel.style.display = 'none';
-        onOK.call(game);
-      };
-    } else {
-      btn.onclick = function () {
-        panel.style.display = 'none';
-      };
-    }
-    panel.style.display = 'flex';
-  }
-
-  loadJSON(name, callback) {
-    const xobj = new XMLHttpRequest();
-    xobj.overrideMimeType('application/json');
-    xobj.open('GET', `${name}.json`, true); // Replace 'my_data' with the path to your file
-    xobj.onreadystatechange = function () {
-			  if (xobj.readyState == 4 && xobj.status == '200') {
-        // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-        callback(xobj.responseText);
-			  }
-    };
-    xobj.send(null);
-	 }
-
   onWindowResize() {
-    this.player.camera.aspect = window.innerWidth / 2 / window.innerHeight;
-    this.player.camera.updateProjectionMatrix();
-
-    this.player.renderer.setSize(window.innerWidth / 2, window.innerHeight);
-
-    this.player2.camera.aspect = window.innerWidth / 2 / window.innerHeight;
-    this.player2.camera.updateProjectionMatrix();
-
-    this.player2.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+    this.players.forEach((player) => {
+      player.camera.aspect = window.innerWidth / 2 / window.innerHeight;
+      player.camera.updateProjectionMatrix();
+      player.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+    });
   }
 
   animate() {
@@ -327,9 +254,7 @@ class Game {
       dt = game.clock.getDelta(),
       distance = 20;
 
-    var bullet,
-      velocity,
-      dir,
+    var dir,
       pos,
       box,
       raycaster,
@@ -344,10 +269,9 @@ class Game {
       
     requestAnimationFrame(() => { game.animate(); });
 
-    [game.player, game.player2].forEach((player) => {
+    game.players.forEach((player) => {
       var bullets = player.bullets,
         cameras = player.cameras;
-
   
       // Handle bullets
       if(bullets) {
@@ -368,7 +292,6 @@ class Game {
           pos = bullet.position.clone();
           box = game.environmentProxy;
             
-          // TODO: improve collision detetion mechanism
           pos.y -= 9; // make sure that the ray touches the leaf
           raycaster = new THREE.Raycaster(pos, dir);
 
@@ -378,12 +301,12 @@ class Game {
           }
 
           // Check if damage is inflicted
-          [game.player, game.player2].forEach((_player) => {
+          game.players.forEach((_player) => {
             if(_player !== player) {
               intersect = raycaster.intersectObject(_player.model.children[2]);
               if(shouldBulletStop(intersect)) {
                 stopTheBullet(bullet);
-                _player.hp -= 10;
+                _player.hp -= 5 + 10 * Math.random();
                 _player.hpBar.style.width = _player.hp + '%';
               }
             }
@@ -403,7 +326,7 @@ class Game {
         player.mixer.update(dt);
       }
 
-      // Perform the transition between jump/walk and run
+      // Perform the transition between jump, walk and run
       if (player.action == 'walk' || player.action == 'jump') {
         const elapsedTime = Date.now() - player.actionTime;
         if (
@@ -441,19 +364,12 @@ class Game {
         player.camera.lookAt(pos);
       }
 
-      player.renderer.render(game.scene, player.camera);
+      if(player.renderer) {
+        player.renderer.render(game.scene, player.camera);
+      }
 
     });
-    if (game.stats != undefined) {
-      game.stats.update();
-    }
-  }
 
-  // Util function 
-  // TODO: move it
-  onError(error) {
-    const msg = console.error(JSON.stringify(error));
-    console.error(error);
   }
 }
 
