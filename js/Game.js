@@ -55,7 +55,7 @@ class Game {
     this.debug = false;
     this.debugPhysics = false;
     this.cameraFade = 0.05;
-    this.mute = false;
+    this.mute = true;
     this.collect = [];
 
     this.models = {}; // reusable models
@@ -99,8 +99,7 @@ class Game {
       }
       btn.innerHTML = '<i class="fas fa-volume-off"></i>';
     } else {
-      this.sfx.factory.play;
-      this.sfx.fan.play();
+      this.sfx['i-choose-you'].play();
       btn.innerHTML = '<i class="fas fa-volume-up"></i>';
     }
   }
@@ -210,7 +209,7 @@ class Game {
     var overlay;
 
     // Visible env
-    loader.load(`${this.assetsPath}fbx/environment4.fbx`, (model) => {
+    loader.load(`${this.assetsPath}fbx/environment.fbx`, (model) => {
       game.scene.add(model);
       model.name = 'Environment';
       enableShadow.call(model);
