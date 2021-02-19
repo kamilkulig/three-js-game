@@ -22,7 +22,11 @@ class Game {
     this.container;
     this.players = [new Player(
       this, 
-      {x: 0, y: 0, z: 0},
+      {
+        x: 478.56442482030235,
+        y: 94.52902792598582,
+        z: -445.68446898564974
+      },
       {
         'Space': 'jump',
         'KeyA': 'left',
@@ -34,7 +38,11 @@ class Game {
       "Player 1"
     ), new Player(
       this, 
-      {x: 0, y: 0, z: 300},
+      {
+        x: -43.559679486111406,
+        y: -8.251207953604283,
+        z: -679.5223907753382
+      },
       {
         'ArrowLeft': 'left',
         'ArrowRight': 'right', 
@@ -136,7 +144,7 @@ class Game {
 
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
-    //this.scene.fog = new THREE.Fog(col, 500, 1500);
+    this.scene.fog = new THREE.Fog(col, 1100, 1600);
 
     light = new THREE.HemisphereLight(0xffffff, 0.5);
     light.position.set(0, 200, 0);
@@ -211,11 +219,12 @@ class Game {
     // Visible env
     loader.load(`${this.assetsPath}fbx/environment.fbx`, (model) => {
       game.scene.add(model);
+      game.environment = model;
       model.name = 'Environment';
       enableShadow.call(model);
      
       // mock the proxy with the original environment
-      game.environmentProxy = model.children[1]; // TODO: remove camera from mesh
+      game.environmentProxy = model.children[4];
       
       game.players.forEach((player) => {
         player.setAction('idle');
