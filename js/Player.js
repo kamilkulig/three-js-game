@@ -117,6 +117,8 @@ class Player {
       var playerContainer,
         hpBarBorder,
         hpBarPoints,
+        cheatsheet,
+        html = '<b>CONTROLS:<b></br></br>',
         renderer = this.renderer = new THREE.WebGLRenderer({antialias: true});
 
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -139,6 +141,18 @@ class Player {
         
         playerContainer.appendChild(hpBarBorder);
         playerContainer.appendChild(renderer.domElement);
+
+        // Conrols cheatsheet
+        cheatsheet = document.createElement('div');
+        cheatsheet.setAttribute('class', 'cheatsheet');
+        
+        playerContainer.appendChild(cheatsheet);
+        for(var key in this.keyboardMapping) {
+          var action =  this.keyboardMapping[key];
+          html += key + ': ' + action + '</br>';
+        }
+        cheatsheet.innerHTML = html;
+
         
     }
 

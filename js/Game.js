@@ -28,12 +28,12 @@ class Game {
         z: -445.68446898564974
       },
       {
-        'Space': 'jump',
-        'KeyA': 'left',
-        'KeyD': 'right',
-        'KeyW': 'forward',
-        'KeyS': 'backward',
-        'KeyF': 'razorLeaf'
+        'Space': 'Jump',
+        'KeyA': 'Left',
+        'KeyD': 'Right',
+        'KeyW': 'Forward',
+        'KeyS': 'Backward',
+        'KeyF': 'Razor Leaf'
       },
       "Player 1"
     ), new Player(
@@ -44,12 +44,12 @@ class Game {
         z: -679.5223907753382
       },
       {
-        'ArrowLeft': 'left',
-        'ArrowRight': 'right', 
-        'ArrowUp': 'forward',
-        'ArrowDown': 'backward',
-        'ControlRight': 'jump',
-        'Enter': 'razorLeaf'
+        'ArrowLeft': 'Left',
+        'ArrowRight': 'Right', 
+        'ArrowUp': 'Forward',
+        'ArrowDown': 'Backward',
+        'ControlRight': 'Jump',
+        'Enter': 'Razor Leaf'
       },
       "Player 2"
     )];
@@ -76,7 +76,7 @@ class Game {
 
     sfxExt = SFX.supportsAudioType('mp3') ? 'mp3' : 'ogg';
 
-    this.assetsPath = '../assets/';
+    this.assetsPath = 'assets/';
 
     options = {
       assets: [
@@ -224,7 +224,7 @@ class Game {
       enableShadow.call(model);
      
       // mock the proxy with the original environment
-      game.environmentProxy = model.children[4];
+      game.environmentProxy = model.children[0];
       
       game.players.forEach((player) => {
         player.setAction('idle');

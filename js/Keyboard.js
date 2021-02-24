@@ -14,16 +14,16 @@ class Keyboard {
               move = player.move;
 
             switch (action) {
-              case 'forward': move.forward = 0.5; break;
-              case 'backward': move.forward = -0.5; break;
-              case 'left': move.turn = 1.5; break;
-              case 'right': move.turn = -1.5; break;
-              case 'jump': 
+              case 'Forward': move.forward = 0.5; break;
+              case 'Backward': move.forward = -0.5; break;
+              case 'Left': move.turn = 1.5; break;
+              case 'Right': move.turn = -1.5; break;
+              case 'Jump': 
                 if(player.action !== 'jump') {
                   player.setAction('jump');
                 }
                 break;
-              case 'razorLeaf':
+              case 'Razor Leaf':
                 player.razorLeaf();
                 break;
             }
@@ -39,10 +39,10 @@ class Keyboard {
           document.addEventListener('keyup', function(e) {
 
             switch (player.keyboardMapping[e.code]) {
-              case 'forward': move.forward = 0; break;
-              case 'backward': move.forward = 0; break;
-              case 'left': move.turn = 0; break;
-              case 'right': move.turn = 0; break;
+              case 'Forward': move.forward = 0; break;
+              case 'Backward': move.forward = 0; break;
+              case 'Left': move.turn = 0; break;
+              case 'Right': move.turn = 0; break;
             }
             player.initAction();
           });
