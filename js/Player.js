@@ -228,7 +228,7 @@ class Player {
         dir = new THREE.Vector3(),
         raycaster,
         blocked,
-        box,
+        proxy,
         intersect,
         model = this.model,
         move = this.move;
@@ -244,14 +244,18 @@ class Player {
       
       raycaster = new THREE.Raycaster(pos, dir);
       blocked = false;
-      box = this.game.environmentProxy;
+      proxy = this.game.environmentProxy;
 
-      if (box != undefined) {
-        intersect = raycaster.intersectObject(box);
-        if (intersect.length > 0) {
-            if (intersect[0].distance < 50) blocked = true;
+      proxy.children.forEach((box) => {
+        if (box != undefined) {
+          intersect = raycaster.intersectObject(box);
+          if (intersect.length > 0) {
+              if (intersect[0].distance < 50) {
+                blocked = true;
+              }
+          }
         }
-      }
+      });
 
       if (!blocked) {
         if (move.forward > 0) {
@@ -272,8 +276,10 @@ class Player {
         }
       }
 
-      if (box != undefined) {
+      if (proxy != undefined) {
         let intersect;
+
+        proxy.children.forEach((box) => {
 
         // cast left
         dir.set(-1, 0, 0);
@@ -307,7 +313,9 @@ class Player {
         raycaster = new THREE.Raycaster(pos, dir);
 
         intersect = raycaster.intersectObject(box);
-        if (intersect.length > 0) {
+        
+        // prevent climbing on trees
+        if (box.name.indexOf('tree') === -1 && intersect.length > 0) {
           const targetY = pos.y - intersect[0].distance;
           if (targetY > model.position.y) {
             // Going up
@@ -326,6 +334,8 @@ class Player {
             }
           }
         }
+
+      });
     }
   }
 }

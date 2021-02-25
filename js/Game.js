@@ -224,8 +224,14 @@ class Game {
       enableShadow.call(model);
      
       // mock the proxy with the original environment
-      game.environmentProxy = model.children[0];
-      
+      game.environmentProxy = model;
+
+      model.children.forEach((child) => {
+        if(child.name.indexOf('wall') >= 0) {
+          child.visible = false;
+        }
+      });
+
       game.players.forEach((player) => {
         player.setAction('idle');
         player.initPosition();  
@@ -264,7 +270,7 @@ class Game {
 
     var dir,
       pos,
-      box,
+      proxy,
       raycaster,
       intersect,
       stopTheBullet = function(bullet) {
@@ -298,15 +304,18 @@ class Game {
 
           dir = velocity.clone().normalize();
           pos = bullet.position.clone();
-          box = game.environmentProxy;
-            
+          proxy = game.environmentProxy;
+          
           pos.y -= 9; // make sure that the ray touches the leaf
-          raycaster = new THREE.Raycaster(pos, dir);
+          
+          proxy.children.forEach((box) => {
+            raycaster = new THREE.Raycaster(pos, dir);
 
-          intersect = raycaster.intersectObject(box);
-          if(shouldBulletStop(intersect)) {
-            stopTheBullet(bullet);
-          }
+            intersect = raycaster.intersectObject(box);
+            if(shouldBulletStop(intersect)) {
+              stopTheBullet(bullet);
+            }
+          });
 
           // Check if damage is inflicted
           game.players.forEach((_player) => {
