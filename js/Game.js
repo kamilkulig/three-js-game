@@ -308,7 +308,7 @@ class Game {
           
           pos.y -= 9; // make sure that the ray touches the leaf
           
-          proxy.children.forEach((box) => {
+          proxy.children.filter((child) => child.name.indexOf('wall') === -1).forEach((box) => {
             raycaster = new THREE.Raycaster(pos, dir);
 
             intersect = raycaster.intersectObject(box);
@@ -324,6 +324,10 @@ class Game {
               if(shouldBulletStop(intersect)) {
                 stopTheBullet(bullet);
                 _player.hp -= 5 + 10 * Math.random();
+                if(_player.hp < 0) {
+                  _player.hp = 0;
+                  _player.setAction('defeated');
+                }
                 _player.hpBar.style.width = _player.hp + '%';
               }
             }
