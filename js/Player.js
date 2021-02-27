@@ -235,7 +235,7 @@ class Player {
 
       this.initAction();
 
-      pos.y += 60;
+      pos.y += 30;
       model.getWorldDirection(dir);
       
       if (move.forward < 0) {
@@ -243,6 +243,17 @@ class Player {
       }
       
       raycaster = new THREE.Raycaster(pos, dir);
+
+      // for debugging purposes
+      // const geometry = new THREE.SphereGeometry( 0.5, 6, 6 );
+      // const material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+      // const sphere = new THREE.Mesh( geometry, material );
+      // this.game.scene.add( sphere );
+      // sphere.position.x = pos.x;
+      // sphere.position.y = pos.y;
+      // sphere.position.z = pos.z;
+
+
       blocked = false;
       proxy = this.game.environmentProxy;
 

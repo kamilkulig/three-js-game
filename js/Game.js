@@ -230,6 +230,11 @@ class Game {
         if(child.name.indexOf('wall') >= 0) {
           child.visible = false;
         }
+
+        if(child.name.indexOf('water') >= 0) {
+          child.material.opacity = 0.5;
+          child.material.transparent = true;
+        }
       });
 
       game.players.forEach((player) => {
