@@ -223,7 +223,8 @@ class Player {
     
     // Move the player if the player performed keyboard action
     moveModel(dt) { 
-      const gravity = 30;
+      const gravity = 30,
+        threshold = 30; // the lower number means better ability to climb
       var pos = this.model.position.clone(),
         dir = new THREE.Vector3(),
         raycaster,
@@ -261,7 +262,7 @@ class Player {
         if (box != undefined) {
           intersect = raycaster.intersectObject(box);
           if (intersect.length > 0) {
-              if (intersect[0].distance < 50) {
+              if (intersect[0].distance < threshold) {
                 blocked = true;
               }
           }
@@ -300,8 +301,8 @@ class Player {
 
         intersect = raycaster.intersectObject(box);
         if (intersect.length > 0) {
-            if (intersect[0].distance < 50) {
-              model.translateX(50 - intersect[0].distance);
+            if (intersect[0].distance < threshold) {
+              model.translateX(threshold - intersect[0].distance);
             }
         }
 
@@ -313,8 +314,8 @@ class Player {
 
         intersect = raycaster.intersectObject(box);
         if (intersect.length > 0) {
-            if (intersect[0].distance < 50) {
-              model.translateX(intersect[0].distance - 50);
+            if (intersect[0].distance < threshold) {
+              model.translateX(intersect[0].distance - threshold);
             }
         }
 
@@ -327,7 +328,7 @@ class Player {
         
         // prevent climbing on trees
         if (box.name.indexOf('tree') === -1 && intersect.length > 0) {
-          const targetY = pos.y - intersect[0].distance;
+          const targetY = pos.y - intersect[0].distance + 5;
           if (targetY > model.position.y) {
             // Going up
             model.position.y = 0.8 * model.position.y + 0.2 * targetY;
