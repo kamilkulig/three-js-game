@@ -47,7 +47,7 @@ class Player {
     // Launch the animation
     setAction(name) {
 
-      if (this.action == 'defeated' || this.action == name || !this.mixer) {
+      if ((this.action == 'defeated' && this.hp <= 0) ||  this.action == name || !this.mixer) {
         return;
       }
 
@@ -118,7 +118,7 @@ class Player {
         hpBarBorder,
         hpBarPoints,
         cheatsheet,
-        html = '<b>CONTROLS:<b></br></br>',
+        html = 'Keyboard controls:</br></br>',
         renderer = this.renderer = new THREE.WebGLRenderer({antialias: true});
 
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -149,7 +149,7 @@ class Player {
         playerContainer.appendChild(cheatsheet);
         for(var key in this.keyboardMapping) {
           var action =  this.keyboardMapping[key];
-          html += key + ': ' + action + '</br>';
+          html += game.keySymbolsMapping[key] + ' : ' + action + '</br>';
         }
         cheatsheet.innerHTML = html;
 
@@ -224,7 +224,7 @@ class Player {
     // Move the player if the player performed keyboard action
     moveModel(dt) { 
       const gravity = 30,
-        threshold = 30; // the lower number means better ability to climb
+        threshold = 30; // the lower  the number, the better ability to climb
       var pos = this.model.position.clone(),
         dir = new THREE.Vector3(),
         raycaster,

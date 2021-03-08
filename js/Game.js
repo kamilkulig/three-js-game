@@ -18,7 +18,20 @@ class Game {
       GAMEOVER: Symbol('gameover'),
     });
     this.mode = this.modes.NONE;
-
+    this.keySymbolsMapping = {
+      'Space': 'Space',
+      'KeyA': 'A',
+      'KeyD': 'D',
+      'KeyW': 'W',
+      'KeyS': 'S',
+      'KeyF': 'F',
+      'ArrowLeft': '←',
+      'ArrowRight': '→', 
+      'ArrowUp': '↑',
+      'ArrowDown': '↓',
+      'ControlRight': 'Right Ctrl',
+      'Enter': 'Enter'
+    };
     this.container;
     this.players = [new Player(
       this, 
@@ -28,11 +41,11 @@ class Game {
         z: -445.68446898564974
       },
       {
-        'Space': 'Jump',
         'KeyA': 'Left',
         'KeyD': 'Right',
         'KeyW': 'Forward',
         'KeyS': 'Backward',
+        'Space': 'Jump',
         'KeyF': 'Razor Leaf'
       },
       "Player 1"
@@ -139,19 +152,29 @@ class Game {
 
     // TODO: move it to Player class
     game.players.forEach((player) => {
-      player.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 2000);
+      player.camera = new THREE.PerspectiveCamera(45, window.innerWidth / 2 / window.innerHeight, 1, 13000);
     });
 
     scene = game.scene = new THREE.Scene();
     scene.background = new THREE.Color(col);
-    this.scene.fog = new THREE.Fog(col, 1100, 1600);
+    this.scene.fog = new THREE.Fog(col, 1300, 1800);
 
-    light = new THREE.HemisphereLight(0xffffff, 0.5);
+
+    // Light and sun
+    // const geometry = new THREE.SphereGeometry( 400,8, 8 );
+    // const material = new THREE.MeshBasicMaterial( {color: 0xfffded} );
+    // const sphere = new THREE.Mesh( geometry, material );
+    // scene.add( sphere );
+    // sphere.position.y = 1000;
+    // sphere.position.z = 9500;
+
+
+    light = new THREE.HemisphereLight(0xfffacf, 0.5);
     light.position.set(0, 200, 0);
     scene.add(light);
 
     light = new THREE.DirectionalLight(0xffd633, 0.5);
-    light.position.set(0, 2000, 1000);
+    light.position.set(0, 1000, 1000);
     light.castShadow = true;
     light.shadow.mapSize.width = 2048;
     light.shadow.mapSize.height = 2048;
@@ -333,6 +356,7 @@ class Game {
                   _player.hp = 0;
                   _player.setAction('defeated');
                 }
+                // TODO: move it to setter
                 _player.hpBar.style.width = _player.hp + '%';
               }
             }
@@ -396,6 +420,28 @@ class Game {
 
     });
 
+  }
+
+
+  reload() {
+    this.players[0].model.position.set(
+      478.56442482030235,
+      94.52902792598582,
+      -445.68446898564974
+    );
+
+    this.players[1].model.position.set(
+      -43.559679486111406,
+      -8.251207953604283,
+      -679.5223907753382
+    );
+
+    this.players.forEach((p) => {
+      p.hp = 100;
+      p.hpBar.style.width = '100%';
+      p.setAction('idle');
+      document.getElementById('game-over-message').style.display = 'none';
+    });
   }
 }
 
