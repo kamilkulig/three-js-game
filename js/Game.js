@@ -33,40 +33,44 @@ class Game {
       'Enter': 'Enter'
     };
     this.container;
-    this.players = [new Player(
-      this, 
-      {
-        x: 478.56442482030235,
-        y: 94.52902792598582,
-        z: -445.68446898564974
-      },
-      {
-        'KeyA': 'Left',
-        'KeyD': 'Right',
-        'KeyW': 'Forward',
-        'KeyS': 'Backward',
-        'Space': 'Jump',
-        'KeyF': 'Razor Leaf'
-      },
-      "Player 1"
-    ), new Player(
-      this, 
-      {
-        x: -43.559679486111406,
-        y: -8.251207953604283,
-        z: -679.5223907753382
-      },
-      {
-        'ArrowLeft': 'Left',
-        'ArrowRight': 'Right', 
-        'ArrowUp': 'Forward',
-        'ArrowDown': 'Backward',
-        'ControlRight': 'Jump',
-        'Enter': 'Razor Leaf'
-      },
-      "Player 2"
-    )];
+    this.playersConfig = [
+      [ {
+          x: 478.56442482030235,
+          y: 94.52902792598582,
+          z: -445.68446898564974
+        },
+        {
+          'KeyA': 'Left',
+          'KeyD': 'Right',
+          'KeyW': 'Forward',
+          'KeyS': 'Backward',
+          'Space': 'Jump',
+          'KeyF': 'Razor Leaf'
+        },
+        "Player 1"
+      ],
+      [
+        {
+          x: -43.559679486111406,
+          y: -8.251207953604283,
+          z: -679.5223907753382
+        },
+        {
+          'ArrowLeft': 'Left',
+          'ArrowRight': 'Right', 
+          'ArrowUp': 'Forward',
+          'ArrowDown': 'Backward',
+          'ControlRight': 'Jump',
+          'Enter': 'Razor Leaf'
+        },
+        "Player 2"
+      ]
+    ]
+    this.players = this.playersConfig.map((config) => {
+      return new Player(this, ...config);
+    });
     
+
     this.stats;
     this.controls;
     this.scene;
@@ -169,7 +173,7 @@ class Game {
     // sphere.position.z = 9500;
 
 
-    light = new THREE.HemisphereLight(0xfffacf, 0.5);
+    light = new THREE.HemisphereLight(0xffffff, 0.7);
     light.position.set(0, 200, 0);
     scene.add(light);
 
@@ -250,11 +254,11 @@ class Game {
       game.environmentProxy = model;
 
       model.children.forEach((child) => {
-        if(child.name.indexOf('wall') >= 0) {
+        if(is(child, 'grass')) {
+          child.material.side = THREE.DoubleSide;
+        } else if(is(child, 'wall')) {
           child.visible = false;
-        }
-
-        if(child.name.indexOf('water') >= 0) {
+        } else if(is(child, 'water')) {
           child.material.opacity = 0.5;
           child.material.transparent = true;
         }
@@ -283,10 +287,11 @@ class Game {
   }
 
   onWindowResize() {
+    var playersNumber = this.playersConfig.length;
     this.players.forEach((player) => {
-      player.camera.aspect = window.innerWidth / 2 / window.innerHeight;
+      player.camera.aspect = window.innerWidth / playersNumber / window.innerHeight;
       player.camera.updateProjectionMatrix();
-      player.renderer.setSize(window.innerWidth / 2, window.innerHeight);
+      player.renderer.setSize(window.innerWidth / playersNumber, window.innerHeight);
     });
   }
 
@@ -336,7 +341,7 @@ class Game {
           
           pos.y -= 9; // make sure that the ray touches the leaf
           
-          proxy.children.filter((child) => child.name.indexOf('wall') === -1).forEach((box) => {
+          proxy.children.filter((child) => !is(child, 'wall')).forEach((box) => {
             raycaster = new THREE.Raycaster(pos, dir);
 
             intersect = raycaster.intersectObject(box);

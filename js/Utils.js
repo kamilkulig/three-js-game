@@ -8,6 +8,11 @@
     });
   }
 
+  
+  function is(obj, what) {
+    return obj.name.indexOf(what) >= 0;
+  }
+
   function onError(error) {
     const msg = console.error(JSON.stringify(error));
     console.error(error);

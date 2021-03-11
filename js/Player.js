@@ -115,6 +115,7 @@ class Player {
     // Create renderer, dynamic HTML elements etc...
     renderView() {
       var playerContainer,
+        playersNumber = this.game.playersConfig.length,
         hpBarBorder,
         hpBarPoints,
         cheatsheet,
@@ -122,7 +123,7 @@ class Player {
         renderer = this.renderer = new THREE.WebGLRenderer({antialias: true});
 
         renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth / 2, window.innerHeight);
+        renderer.setSize(window.innerWidth / playersNumber, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
         renderer.shadowMapDebug = true;
@@ -291,63 +292,69 @@ class Player {
       if (proxy != undefined) {
         let intersect;
 
-        proxy.children.forEach((box) => {
+        proxy.children.filter((child) => {
+          return !(
+            is(child, 'water') ||
+            is(child, 'grass')||
+            is(child, 'mushroom')
+          )
+        }).forEach((box) => {
 
-        // cast left
-        dir.set(-1, 0, 0);
-        dir.applyMatrix4(model.matrix);
-        dir.normalize();
-        raycaster = new THREE.Raycaster(pos, dir);
+          // cast left
+          dir.set(-1, 0, 0);
+          dir.applyMatrix4(model.matrix);
+          dir.normalize();
+          raycaster = new THREE.Raycaster(pos, dir);
 
-        intersect = raycaster.intersectObject(box);
-        if (intersect.length > 0) {
-            if (intersect[0].distance < threshold) {
-              model.translateX(threshold - intersect[0].distance);
-            }
-        }
+          intersect = raycaster.intersectObject(box);
+          if (intersect.length > 0) {
+              if (intersect[0].distance < threshold) {
+                model.translateX(threshold - intersect[0].distance);
+              }
+          }
 
-        // cast right
-        dir.set(1, 0, 0);
-        dir.applyMatrix4(model.matrix);
-        dir.normalize();
-        raycaster = new THREE.Raycaster(pos, dir);
+          // cast right
+          dir.set(1, 0, 0);
+          dir.applyMatrix4(model.matrix);
+          dir.normalize();
+          raycaster = new THREE.Raycaster(pos, dir);
 
-        intersect = raycaster.intersectObject(box);
-        if (intersect.length > 0) {
-            if (intersect[0].distance < threshold) {
-              model.translateX(intersect[0].distance - threshold);
-            }
-        }
+          intersect = raycaster.intersectObject(box);
+          if (intersect.length > 0) {
+              if (intersect[0].distance < threshold) {
+                model.translateX(intersect[0].distance - threshold);
+              }
+          }
 
-        // cast down
-        dir.set(0, -1, 0);
-        pos.y += 200;
-        raycaster = new THREE.Raycaster(pos, dir);
+          // cast down
+          dir.set(0, -1, 0);
+          pos.y += 200;
+          raycaster = new THREE.Raycaster(pos, dir);
 
-        intersect = raycaster.intersectObject(box);
-        
-        // prevent climbing on trees
-        if (box.name.indexOf('tree') === -1 && intersect.length > 0) {
-          const targetY = pos.y - intersect[0].distance + 5;
-          if (targetY > model.position.y) {
-            // Going up
-            model.position.y = 0.8 * model.position.y + 0.2 * targetY;
-            this.velocityY = 0;
-          } else if (targetY < model.position.y) {
-            // Falling
-            if (this.velocityY == undefined) {
+          intersect = raycaster.intersectObject(box);
+          
+          // prevent climbing on trees
+          if (!is(box, 'tree') && intersect.length > 0) {
+            const targetY = pos.y - intersect[0].distance + 5;
+            if (targetY > model.position.y) {
+              // Going up
+              model.position.y = 0.8 * model.position.y + 0.2 * targetY;
               this.velocityY = 0;
-            }
-            this.velocityY += dt * gravity;
-            model.position.y -= this.velocityY;
-            if (model.position.y < targetY) {
-              this.velocityY = 0;
-              model.position.y = targetY;
+            } else if (targetY < model.position.y) {
+              // Falling
+              if (this.velocityY == undefined) {
+                this.velocityY = 0;
+              }
+              this.velocityY += dt * gravity;
+              model.position.y -= this.velocityY;
+              if (model.position.y < targetY) {
+                this.velocityY = 0;
+                model.position.y = targetY;
+              }
             }
           }
-        }
 
-      });
+        });
     }
   }
 }
