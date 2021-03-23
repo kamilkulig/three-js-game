@@ -42,6 +42,12 @@ class Player {
         this.game.scene.add(model);
 
         this.createCameras();
+
+        // blinking
+        setInterval(() => {
+          this.blink();
+        }, 7000);
+        
     }
 
     // Launch the animation
@@ -220,6 +226,14 @@ class Player {
         scene.add(bullet); 
       }
       player.lastFired = Date.now();
+    }
+
+    blink() {
+      let offset = this.model.children[2].material[2].map.offset;
+      offset.y = 0.5;
+      setTimeout(() => {
+        offset.y = 0;
+      }, 200);
     }
     
     // Move the player if the player performed keyboard action
