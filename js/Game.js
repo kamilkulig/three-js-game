@@ -29,8 +29,8 @@ class Game {
       'ArrowRight': '→', 
       'ArrowUp': '↑',
       'ArrowDown': '↓',
-      'ControlRight': 'Right Ctrl',
-      'Enter': 'Enter'
+      'Semicolon': ';',
+      'Quote': '"'
     };
     this.container;
     this.playersConfig = [
@@ -60,8 +60,8 @@ class Game {
           'ArrowRight': 'Right', 
           'ArrowUp': 'Forward',
           'ArrowDown': 'Backward',
-          'ControlRight': 'Jump',
-          'Enter': 'Razor Leaf'
+          'Quote': 'Razor Leaf',
+          'Semicolon': 'Jump'
         },
         "Player 2"
       ]

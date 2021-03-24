@@ -156,7 +156,7 @@ class Player {
         playerContainer.appendChild(cheatsheet);
         for(var key in this.keyboardMapping) {
           var action =  this.keyboardMapping[key];
-          html += game.keySymbolsMapping[key] + ' : ' + action + '</br>';
+          html += '<div class="cheetsheet-row"><span class="key" ' + (key === 'Space' ? 'id="space-key"' : "" ) + '>' + game.keySymbolsMapping[key] + '</span> : ' + action + '</div>';
         }
         cheatsheet.innerHTML = html;
 
